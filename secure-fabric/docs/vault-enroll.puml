@@ -1,0 +1,29 @@
+@startuml
+title "Vault-x.509 Enrolling a Client"
+
+skinparam BoxPadding 25
+
+actor "Client" as client
+
+box "Organization" #LightGray
+    entity "Node\nApplication" as app
+    entity "Certificate\nDatastore" as crtStore
+    entity "Fabric\nCa" as ca
+    entity "Vault\nServer" as vault
+end box
+
+client -> app: /register -d\n{crtType : "Vault-X.509"\nvaultToken,enId,enSecret,keyName}
+activate app
+app->app: csrInfo = createCSRInfo(enId)
+app->vault: /transit/sign/${keyName} \n-d {input: csrInfo}
+activate vault
+return signature
+app->app: csr = getCSR(csrInfo,signature)
+app->ca: enroll(enId,enSecret,csr)
+activate ca
+return certificate
+app->crtStore: put(certificate)
+activate crtStore
+return OK || 201
+return OK || 201
+@enduml

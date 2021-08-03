@@ -1,0 +1,62 @@
+@startuml
+
+title "Invoke/Query Method"
+
+skinparam BoxPadding 25
+
+actor "Client" as client
+
+box "Organization" #LightGray
+    entity "Node\nApplication" as app
+    entity "Certificate\nDatastore" as crtStore
+    entity "Vault\nServer" as vault
+end box
+
+entity "Fabric\nNetwork" as network #Aquamarine
+
+client->app: /invoke||query \n-d {crtType: "Vault-X.509",\nvaultToken,keyName,methodData}
+
+activate app
+
+
+app->crtStore: getIdentity("Vault-X.509",userId)
+activate crtStore
+
+return identity
+app->app: gateway = new SecureGateway({identity})
+group internal [peer-connection]
+    app->app: connectionInfo = gateway.connInfo()
+    app->vault: /transit/sign/${keyName} \n-d {input: connectionInfo}
+    activate vault
+    return signature
+
+    app->network: connect(connectionInfo,signature)
+    activate network
+    return connection
+end
+
+group internal [proposal-to-peers]
+    app->vault: /transit/sign/${keyName} \n-d {input: methodData}
+    activate vault
+    return signature
+
+    app->network: propose -d {methodData,signature}
+    activate network
+    return []proposalResponse
+end
+
+alt#Gold query-method
+    return queryResult
+else #Aquamarine invoke-method
+    group internal [send-endorsement-to-orderer]
+        app->app: endorsement = prepareEndorsement\n([]proposalResponse)
+        app->vault: /transit/sign/${keyName} \n-d {input: endorsement}
+        activate vault
+        return signature
+
+        app->network: orderering -d {endorsement,signature}
+        activate network
+        return SUCCESS
+    end
+end
+@enduml

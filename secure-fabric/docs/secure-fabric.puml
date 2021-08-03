@@ -1,0 +1,34 @@
+@startuml
+title Secure Fabric Architecture
+skinparam componentStyle rectangle
+
+
+component "Fabric Network" as network #Aquamarine{
+    component "auditor1.organization" as aud1 #AliceBlue{
+        node "Peer" as aud1.peer
+        node "Orderer" as aud1.orderer
+    } 
+
+    component "auditor2.organization" as aud2 #AliceBlue{
+        node "Peer" as aud2.peer
+        node "Orderer" as aud2.orderer
+    } 
+
+}
+
+
+component "auditor1.organization" as auditor1{
+    actor "Client" as client
+    node "Org Application"  as app
+    node "Fabric CA Server" as ca
+    node "Vault Server" as vault
+    node "Certificate\nDatastore" as certStore
+    client <-[dashed]> app: request \n{authType : Vault|Client}
+    app --> ca
+    app --> vault
+    app --> certStore
+    app <-> network
+}
+
+
+@enduml

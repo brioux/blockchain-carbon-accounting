@@ -1,0 +1,34 @@
+@startuml
+
+title "Invoke/Query Method"
+
+skinparam BoxPadding 25
+
+entity "Client\nExtension" as client
+
+
+box "Organization" #LightGray
+    entity "Node\nApplication" as app
+    entity "Certificate\nDatastore" as crtStore
+end box
+
+entity "Fabric\nNetwork" as network #Aquamarine
+
+client->app: /invoke||query \n-d {crtType: "Vault-X.509",\nvaultToken,keyName,methodData}
+
+activate app
+
+
+app->crtStore: getIdentity("Vault-X.509",userId)
+activate crtStore
+return identity
+app->app: gateway = new SecureGateway({identity})
+app->app: wait gateway.connect()
+note over app: internally data will be\nsent to client's extension as ws message\nvia same ws connection for signing 
+
+app->network: submit/evaluate(methodData)
+note over app: [FOR SUBMIT] internally data will be\nsent to client's extension as ws message\nvia same ws connection for signing
+activate network
+return response
+return response
+@enduml

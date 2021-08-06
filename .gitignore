@@ -6,3 +6,7 @@ utility-emissions-channel/docker-compose-setup/bin_mac
 utility-emissions-channel/docker-compose-setup/config
 utility-emissions-channel/chaincode/node/node_modules
 slitherlog.json
+node_modules
+
+secure-fabric/**/package-lock.json
+secure-fabric/**/lib

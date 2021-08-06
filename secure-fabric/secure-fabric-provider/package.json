@@ -1,0 +1,23 @@
+{
+  "name": "secure-fabric-provider",
+  "version": "1.0.0",
+  "description": "package for writing node.js application to interact with HL Fabric, such that private key is never brought to the application for signing messages",
+  "keyword": [
+    "hyperledger",
+    "blockchain",
+    "vault-transit-engine",
+    "fabric-extension"
+  ],
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "scripts": {},
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@zzocker/fabric-common": "^2.3.0-snapshot",
+    "@zzocker/fabric-network": "^2.3.0-snapshot",
+    "@zzocker/fabric-protos": "^2.3.0-snapshot",
+    "node-vault": "^0.9.22",
+    "winston": "^3.3.3"
+  }
+}

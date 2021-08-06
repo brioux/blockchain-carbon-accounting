@@ -1,0 +1,32 @@
+{
+  "name": "secure-fabric",
+  "version": "1.0.0",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hyperledger-labs/blockchain-carbon-accounting/secure-fabric"
+  },
+  "description": "Secure Fabric provides a solution to the fabric organization for managing their client's private key such that the client's private key is never brought to `Node Server` for singing. Currently `Secure fabric` provide a option of keeping client's private key into `Vault Transit Engine` or in browser `Extension`.",
+  "main": "index.js",
+  "scripts": {
+    "eslint": "eslint secure-fabric-provider/**/*.ts",
+    "compile": "tsc --project secure-fabric-provider/tsconfig.json",
+    "test:provider": "mocha --require ts-node/register --reporter list -- 'secure-fabric-provider/test/**/*.test.ts'"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/chai": "^4.2.21",
+    "@types/chai-as-promised": "^7.1.4",
+    "@types/mocha": "^9.0.0",
+    "@types/node": "^16.4.11",
+    "@types/node-vault": "^0.9.13",
+    "@types/request": "^2.48.7",
+    "chai": "^4.3.4",
+    "chai-as-promised": "^7.1.1",
+    "mocha": "^9.0.3",
+    "ts-node": "^10.1.0",
+    "typescript": "^4.3.5"
+  }
+}

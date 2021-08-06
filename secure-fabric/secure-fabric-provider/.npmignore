@@ -1,0 +1,15 @@
+# Node Files #
+/node_modules
+npm-debug.log
+
+# Coverage #
+/coverage
+
+# Test Files #
+/test
+
+# Source files #
+/src
+
+tsconfig.json
+/.*

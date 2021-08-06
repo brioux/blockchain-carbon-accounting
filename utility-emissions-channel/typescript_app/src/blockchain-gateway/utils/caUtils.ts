@@ -35,6 +35,8 @@ export interface UserToEnroll {
   orgMspId: string;
   userId: string;
   userIdSecret: string;
+  csr: string;
+  type: string;
 }
 
 /**
@@ -54,14 +56,18 @@ export const enrollUserToWallet = async (userToEnroll: UserToEnroll): Promise<ob
       return;
     }
     // Enroll the user
-    const enrollment = await userToEnroll.caClient.enroll({ enrollmentID: userToEnroll.userId, enrollmentSecret: userToEnroll.userIdSecret });
+    const enrollment = await userToEnroll.caClient.enroll({ 
+      enrollmentID: userToEnroll.userId, 
+      enrollmentSecret: userToEnroll.userIdSecret 
+      csr: userToEnroll.csr
+    });
     // store the user
     const hsmIdentity = {
       credentials: {
-          certificate: enrollment.certificate,
+          certificate: userToEnroll.csr || enrollment.certificate,
       },
       mspId: userToEnroll.orgMspId,
-      type: 'HSM-X.509',
+      type: userToEnroll.type
     };
     await userToEnroll.wallet.put(userToEnroll.userId, hsmIdentity);
     result["reponse"] = `Successfully enrolled user ${userToEnroll.userId} and imported it into the wallet`;

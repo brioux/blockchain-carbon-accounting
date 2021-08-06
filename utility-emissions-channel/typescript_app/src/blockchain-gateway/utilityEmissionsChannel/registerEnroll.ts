@@ -118,7 +118,7 @@ export class EmissionsContractInvoke {
       } as UserToRegister);
 
       let result = new Object();
-
+      csr_gen() // pass this to Vault or whatever key store  
       // By default you can only enroll a user once, after that you would have to re-enroll using the current
       // certificate rather than using the secret.
       result = await enrollUserToWallet({
@@ -129,6 +129,8 @@ export class EmissionsContractInvoke {
           //userIdSecret: null,
           // use secret output from registration step above as opposed to user provided passphrase
           userIdSecret: secret,
+          csr: csr,
+          type: "X509"
       } as UserToEnroll);
 
       result["info"] = "USER REGISTERED AND ENROLLED";
@@ -177,7 +179,6 @@ async function setHsmProvider(wallet,orgName){
 async function findSoftHSMPKCS11Lib() {
     var path = require('path');
     const root = path.dirname(require.main.filename || process.mainModule.filename);
-
     const commonSoftHSMPathNames = [
         '/usr/lib/softhsm/libsofthsm2.so',
         '/usr/lib/x86_64-linux-gnu/softhsm/libsofthsm2.so',

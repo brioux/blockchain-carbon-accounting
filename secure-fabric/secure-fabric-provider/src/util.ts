@@ -1,4 +1,4 @@
-import winston, { LogEntry, Logger } from 'winston';
+import winston, { Logger } from 'winston';
 
 // every class will create a logger and each method
 // will create methodLogger = this.log.child({fnTag : <name>})
@@ -31,6 +31,6 @@ export function getMethodLogger(classLogger: Logger, fnTag: string): Logger {
   return classLogger.child({ fnTag: fnTag });
 }
 
-export interface options {
+export interface Options {
   logLevel: 'debug' | 'info' | 'error';
 }

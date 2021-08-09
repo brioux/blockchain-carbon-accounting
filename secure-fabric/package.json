@@ -9,9 +9,11 @@
   "description": "Secure Fabric provides a solution to the fabric organization for managing their client's private key such that the client's private key is never brought to `Node Server` for singing. Currently `Secure fabric` provide a option of keeping client's private key into `Vault Transit Engine` or in browser `Extension`.",
   "main": "index.js",
   "scripts": {
-    "eslint": "eslint secure-fabric-provider/**/*.ts",
+    "lint": "tslint -c ./tslint.json 'secure-fabric-provider/src/**/*.ts' 'secure-fabric-provider/test/**.test.ts'",
     "compile": "tsc --project secure-fabric-provider/tsconfig.json",
-    "test:provider": "mocha --require ts-node/register --reporter list -- 'secure-fabric-provider/test/**/*.test.ts'"
+    "test:provider": "mocha --require ts-node/register --reporter list -- 'secure-fabric-provider/test/**/*.test.ts'",
+    "coverage:provider": "nyc npm run test:provider",
+    "test:e2e": "mocha --require ts-node/register --reporter list -- 'test/**/*test.ts'"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +21,8 @@
   "devDependencies": {
     "@types/chai": "^4.2.21",
     "@types/chai-as-promised": "^7.1.4",
+    "@types/elliptic": "^6.4.13",
+    "@types/jsrsasign": "^8.0.13",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.4.11",
     "@types/node-vault": "^0.9.13",
@@ -26,7 +30,10 @@
     "chai": "^4.3.4",
     "chai-as-promised": "^7.1.1",
     "mocha": "^9.0.3",
+    "nyc": "^15.1.0",
+    "secure-fabric-provider": "file:./secure-fabric-provider",
     "ts-node": "^10.1.0",
+    "tslint": "^6.1.3",
     "typescript": "^4.3.5"
   }
 }

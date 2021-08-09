@@ -1,0 +1,21 @@
+{
+    "exclude": [
+      "index.js",
+      "coverage/**",
+      "**/*.test*.ts",
+      "**/*.d.ts"
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "reporter": [
+      "text",
+      "html"
+    ],
+    "cache": true,
+    "check-coverage": true,
+    "statements": 94,
+    "branches": 95,
+    "functions": 89,
+    "lines": 94
+}

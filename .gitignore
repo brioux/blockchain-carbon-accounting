@@ -10,3 +10,5 @@ node_modules
 
 secure-fabric/**/package-lock.json
 secure-fabric/**/lib
+.nyc_output
+coverage

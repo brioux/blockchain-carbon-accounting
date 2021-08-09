@@ -17,6 +17,8 @@
     "@zzocker/fabric-common": "^2.3.0-snapshot",
     "@zzocker/fabric-network": "^2.3.0-snapshot",
     "@zzocker/fabric-protos": "^2.3.0-snapshot",
+    "elliptic": "^6.5.4",
+    "jsrsasign": "^8.0.24",
     "node-vault": "^0.9.22",
     "winston": "^3.3.3"
   }

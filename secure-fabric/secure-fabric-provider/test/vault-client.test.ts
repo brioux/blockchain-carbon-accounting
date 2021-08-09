@@ -1,75 +1,144 @@
-import { VaultTransitClientOptions, VaultTransitClient } from '../src/vault-client';
-import { describe, beforeEach, it } from 'mocha';
-import chai from 'chai';
-import asPromised from 'chai-as-promised';
+import { VaultTransitClient } from '../src/vault-client';
+import { expect } from 'chai';
+import { createHash } from 'crypto';
 
-const expect = chai.expect;
-chai.use(asPromised);
-
-describe('Vault-Client', () => {
+describe('vault-client', () => {
   const testP256 = 'test-p256';
   const testP384 = 'test-p384';
   const keyNotSupported = 'keyNotSupported';
   const token = 'tokenId';
-  let vaultClient: VaultTransitClient;
-  beforeEach(() => {
-    const vaultClientOpts: VaultTransitClientOptions = {
-      endpoint: 'http://localhost:8200',
-      mountPath: '/transit',
-      logLevel: 'debug',
-    };
-    vaultClient = new VaultTransitClient(vaultClientOpts);
-  });
-  describe('#sign', () => {
-    it('return signature', async () => {
-      const signatureP256 = await vaultClient.sign(token, testP256, Buffer.from('Hello Vault'), false);
-      expect(signatureP256).not.to.be.empty;
-      expect(signatureP256).to.be.instanceOf(Buffer);
 
-      const signatureP384 = await vaultClient.sign(token, testP384, Buffer.from('Hello Vault'), false);
-      expect(signatureP384).not.to.be.empty;
-      expect(signatureP384).to.be.instanceOf(Buffer);
+  describe('constructor', () => {
+    it('should create a VaultTransitClient', () => {
+      const client = new VaultTransitClient({
+        endpoint: 'http://localhost:8200',
+        mountPath: '/transit',
+        token: token,
+        logLevel: 'debug',
+      });
+      expect(client).not.be.undefined;
     });
 
-    it('throw if token is incorrect', async () => {
-      await expect(vaultClient.sign('incorrect', testP256, Buffer.from('Hello Vault'), false)).to.be.rejected;
-    });
-    it('throw if keyName not found', async () => {
-      await expect(vaultClient.sign(token, 'not-found-key', Buffer.from('Hello Vault'), false)).to.be.rejected;
-    });
-  });
-  describe('#getPub', () => {
-    it('return-public-key-p256', async () => {
-      const pub = await vaultClient.getPub(token, testP256);
-      expect(pub).not.be.empty;
-      const re = /[0-9A-Fa-f]{6}/g;
-      expect(re.test(pub.x)).to.be.true;
-      expect(re.test(pub.y)).to.be.true;
-      expect(pub.crv).to.be.eql('p256');
-    });
-
-    it('return-public-key-p384', async () => {
-      const pub = await vaultClient.getPub(token, testP384);
-      expect(pub).not.be.empty;
-      const re = /[0-9A-Fa-f]{6}/g;
-      expect(re.test(pub.x)).to.be.true;
-      expect(re.test(pub.y)).to.be.true;
-      expect(pub.crv).to.be.eql('p384');
-    });
-    it('throw if curve not supported', async () => {
+    it('throw if endpoint is empty', () => {
+      let err: Error;
       try {
-        await vaultClient.getPub(token, keyNotSupported);
+        new VaultTransitClient({
+          endpoint: '',
+          mountPath: '/transit',
+          token: token,
+          logLevel: 'debug',
+        });
       } catch (error) {
-        expect(error).to.be.instanceOf(Error);
-        expect((error as Error).message).to.be.eql('only P-256 and P-384 curve are supported, but provided aes256-gcm96');
+        err = error;
       }
+      expect(err.message).to.be.eql('require vault endpoint');
     });
 
-    it('throw if token is incorrect', async () => {
-      await expect(vaultClient.getPub('incorrect-token', testP256)).to.be.rejected;
+    it('throw if mountPath is empty', () => {
+      let err: Error;
+      try {
+        new VaultTransitClient({
+          endpoint: 'http://localhost:8200',
+          mountPath: '',
+          token: token,
+          logLevel: 'debug',
+        });
+      } catch (error) {
+        err = error;
+      }
+      expect(err.message).to.be.eql('require mount path of vault transit secret engine');
     });
-    it('throw if keyName not found', async () => {
-      await expect(vaultClient.getPub(token, 'not-found')).to.be.rejected;
+
+    it('throw if token is empty', () => {
+      let err: Error;
+      try {
+        new VaultTransitClient({
+          endpoint: 'http://localhost:8200',
+          mountPath: '/transit',
+          token: '',
+          logLevel: 'debug',
+        });
+      } catch (error) {
+        err = error;
+      }
+      expect(err.message).to.be.eql('require vault token');
+    });
+  });
+
+  describe('getPub', () => {
+    let client: VaultTransitClient;
+    before(() => {
+      client = new VaultTransitClient({
+        endpoint: 'http://localhost:8200',
+        mountPath: '/transit',
+        token: token,
+        logLevel: 'debug',
+      });
+    });
+    it('get-p256-pub-key', async () => {
+      const pub = await client.getPub(testP256);
+      expect(pub).not.to.be.undefined;
+      expect(pub.getPublic().validate()).to.be.true;
+      const re = /[0-9A-Fa-f]{6}/g;
+      expect(re.test(pub.getPublic('hex'))).to.be.true;
+      expect(pub.ec.curve._bitLength).to.be.eql(256);
+    });
+    it('get-p384-pub-key', async () => {
+      const pub = await client.getPub(testP384);
+      expect(pub).not.to.be.undefined;
+      expect(pub.getPublic().validate()).to.be.true;
+      const re = /[0-9A-Fa-f]{6}/g;
+      expect(re.test(pub.getPublic('hex'))).to.be.true;
+      expect(pub.ec.curve._bitLength).to.be.eql(384);
+    });
+    it('throw if key type not supported', async () => {
+      let err: Error;
+      try {
+        await client.getPub(keyNotSupported);
+      } catch (error) {
+        err = error;
+      }
+      expect(err.message).to.be.eql('only P-256 and P-384 curve are supported');
+    });
+    it('throw if key not found', async () => {
+      let err: Error;
+      try {
+        await client.getPub('not-found');
+      } catch (error) {
+        err = error;
+      }
+      expect(err.message).to.be.eql('Status 404');
+    });
+  });
+
+  describe('sign', async () => {
+    let client: VaultTransitClient;
+    const digest = Buffer.from('hello-secure-fabric');
+    const hashedDigest = createHash('sha256').update(digest).digest();
+    before(() => {
+      client = new VaultTransitClient({
+        endpoint: 'http://localhost:8200',
+        mountPath: '/transit',
+        token: token,
+        logLevel: 'debug',
+      });
+    });
+    it('sign-with', async () => {
+      const signature = await client.sign(testP256, digest, false);
+      expect(signature).not.to.be.undefined;
+    });
+    it('sign-with-hashed-message', async () => {
+      const signature = await client.sign(testP384, hashedDigest, true);
+      expect(signature).not.to.be.undefined;
+    });
+    it('throw if key not found', async () => {
+      let err: Error;
+      try {
+        await client.sign('not-found', digest, false);
+      } catch (error) {
+        err = error;
+      }
+      expect(err.message).to.be.eql('encryption key not found');
     });
   });
 });

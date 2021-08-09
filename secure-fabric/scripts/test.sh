@@ -10,7 +10,7 @@ function setupVault(){
     -e 'VAULT_DEV_ROOT_TOKEN_ID=tokenId' \
     -e 'VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200' vault:1.8.1
     
-    sleep 5
+    sleep 10
     # enable transit engine 
     docker exec -e VAULT_TOKEN=tokenId -e VAULT_ADDR=http://0.0.0.0:8200 -it vault vault secrets enable transit
 

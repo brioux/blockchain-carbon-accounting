@@ -4,15 +4,28 @@ import { ICryptoKey } from '@zzocker/fabric-common';
 import { Logger } from 'winston';
 import { KJUR } from 'jsrsasign';
 import { createHash } from 'crypto';
+const ecsig = require('elliptic/lib/elliptic/ec/signature.js');
+const asn1 = require('asn1.js');
+import BN from 'bn.js'
+import {curves} from 'elliptic'
+
+const EcdsaDerSig = asn1.define('ECPrivateKey', function () {
+  return this.seq().obj(this.key('r').int(), this.key('s').int());
+});
+
+const p256N = (curves as any).p256.n as BN
+const p384N = (curves as any).p384.n as BN
 
 export interface VaultKeyOptions extends Options {
   keyName: string;
   vaultClient: VaultTransitClient;
+  curve?:'p256' | 'p384'
 }
 export class VaultKey implements ICryptoKey {
   private readonly classLogger: Logger;
   private readonly _backend: VaultTransitClient;
   private readonly keyName: string;
+  private readonly crv:string
   constructor(opts: VaultKeyOptions) {
     this.classLogger = getClassLogger(opts.logLevel, 'VaultKey');
     if (opts.vaultClient === undefined) {
@@ -23,6 +36,7 @@ export class VaultKey implements ICryptoKey {
     }
     this._backend = opts.vaultClient;
     this.keyName = opts.keyName;
+    this.crv = opts.curve
   }
 
   /**
@@ -60,6 +74,42 @@ export class VaultKey implements ICryptoKey {
     const pem = csr.getPEMString();
     methodLogger.debug(`generated pem encoded csr = \n${pem}`);
     return pem as string;
+  }
+
+  /**
+   * @description : sign message and return in a format in which fabric understand
+   * @param digest
+   * @param preHashed
+   */
+  async sign(digest: Buffer, preHashed: boolean): Promise<Buffer> {
+    const methodLogger = getMethodLogger(this.classLogger, 'sign');
+    methodLogger.debug(`digestSize = ${digest.length} preHashed = ${preHashed}`);
+    methodLogger.debug('getting signature from vault');
+    const raw = await this._backend.sign(this.keyName, digest, preHashed);
+    methodLogger.debug(`converting asn1 sig format to der for fabric to accept`)
+    const rsSig = EcdsaDerSig.decode(raw, 'der');
+    const r = rsSig.r as BN;
+    let s = rsSig.s as BN;
+    if (r===undefined || s === undefined){
+      throw new Error('invalid signature')
+    }
+    let crvN:BN = p256N;
+    if (this.crv == 'p384'){
+      crvN = p384N
+    } 
+    const halfOrder =crvN.shrn(1);
+    if (!halfOrder) {
+      throw new Error(
+        'Can not find the half order needed to calculate "s" value for immalleable signatures'
+      );
+    }
+    if (s.cmp(halfOrder) === 1) {
+      const bigNum = crvN as BN;
+      s = bigNum.sub(s);
+    }
+    const der = (new ecsig({r:r,s:s})).toDER()
+    methodLogger.debug(`digest successfully signed`)
+    return Buffer.from(der);
   }
 
   // NOT REQUIRED

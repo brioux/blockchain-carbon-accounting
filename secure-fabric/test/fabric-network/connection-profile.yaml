@@ -1,0 +1,20 @@
+---
+name: testNetwork
+version: 1.0.0
+client:
+  organization: DevOrg
+  connection:
+    timeout:
+      peer:
+        endorser: '300'
+organizations:
+  DevOrg:
+    mspid: DevMSP
+    peers:
+      - devpeer
+peers:
+  devpeer:
+    url: grpc://localhost:7051
+
+  orderer:
+    url:  grpc://localhost:7050

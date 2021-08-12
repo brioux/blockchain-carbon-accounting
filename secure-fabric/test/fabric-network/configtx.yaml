@@ -1,0 +1,118 @@
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: crypto-config/ordererOrganizations/orderer.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
+    - &DevOrg
+        Name: DevOrg
+        ID: DevMSP
+
+        MSPDir: crypto-config/peerOrganizations/devorg.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('DevMSP.admin', 'DevMSP.peer', 'DevMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('DevMSP.admin', 'DevMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('DevMSP.admin')"
+Capabilities:
+    Channel: &ChannelCapabilities
+        V1_4_3: true
+        V1_3: false
+        V1_1: false
+    Orderer: &OrdererCapabilities
+        V1_4_2: true
+        V1_1: false
+    Application: &ApplicationCapabilities
+        V1_4_2: true
+        V1_3: false
+        V1_2: false
+        V1_1: false
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+
+    Capabilities:
+        <<: *ApplicationCapabilities
+Orderer: &OrdererDefaults
+    OrdererType: solo
+
+    Addresses:
+        - orderer:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+Profiles:
+
+    Genesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            DevConsortium:
+                Organizations:
+                    - *DevOrg
+    DevChannel:
+        Consortium: DevConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *DevOrg
+            Capabilities:
+                <<: *ApplicationCapabilities

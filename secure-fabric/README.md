@@ -4,6 +4,14 @@ Secure Fabric provides a solution to the fabric organization for managing their 
 
 ![secure-fabric](docs/secure-fabric.png)
 
+## Development
+
+Running Test
+- Setup development environment : `./scripts/dev.sh prepare`
+- Run Test : `npm run test:provider`
+- Clean development environment : `./scripts/dev.sh clean`
+
+
 ## Vault-X.509 Identity
 
 Signing is done by `private` key stored with `Vault Transit Engine`

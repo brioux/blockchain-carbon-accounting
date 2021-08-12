@@ -14,6 +14,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@zzocker/fabric-ca-client": "^2.3.1-snapshot",
     "@zzocker/fabric-common": "^2.3.0-snapshot",
     "@zzocker/fabric-network": "^2.3.0-snapshot",
     "@zzocker/fabric-protos": "^2.3.0-snapshot",

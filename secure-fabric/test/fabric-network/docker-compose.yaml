@@ -1,0 +1,90 @@
+version: '2'
+
+networks: 
+    fabric:
+
+services:
+
+  orderer:
+    container_name: orderer
+    extends:
+      file: base.yaml
+      service: orderer-base
+    volumes:
+        - ./artifacts:/artifacts
+        - ./crypto-config/ordererOrganizations/orderer.com/orderers/orderer:/orderer
+    ports:
+      - 7050:7050
+    networks: 
+        - fabric
+
+  devpeer:
+    container_name: devpeer
+    extends:
+      file: base.yaml
+      service: peer-base
+    environment:
+      - CORE_PEER_ID=devpeer
+      - CORE_PEER_ADDRESS=devpeer:7051
+      - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
+      - FABRIC_LOGGING_SPEC=DEBUG
+      - CORE_PEER_CHAINCODEADDRESS=devpeer:7052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=devpeer:7051
+      - CORE_PEER_LOCALMSPID=DevMSP
+      - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
+      - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=db:5984
+    volumes:
+        - ./crypto-config/peerOrganizations/devorg.com/peers/devpeer:/peer
+        - /var/run/:/host/var/run/
+    ports:
+      - 7051:7051
+    networks: 
+        - fabric
+  db:
+    container_name: db
+    image: hyperledger/fabric-couchdb
+    networks: 
+      - fabric
+    ports: 
+      - 5984:5984
+    environment: 
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+  ca:
+    image: hyperledger/fabric-ca:$IMAGE_TAG
+    environment:
+      - FABRIC_CA_SERVER_CA_NAME=devca
+    ports:
+      - 7054:7054
+    command: fabric-ca-server start --ca.certfile /ca/ca.devorg.com-cert.pem --ca.keyfile /ca/priv_sk -b admin:adminpw
+    volumes:
+      - ./crypto-config/peerOrganizations/devorg.com/ca/:/ca
+    container_name: ca
+    networks:
+      - fabric
+  cli:
+    container_name: cli
+    image: hyperledger/fabric-tools:$IMAGE_TAG
+    tty: true
+    stdin_open: true
+    environment:
+      - FABRIC_LOGGING_SPEC=INFO
+      - CORE_PEER_ID=cli
+      - CORE_PEER_ADDRESS=devpeer:7051
+      - CORE_PEER_LOCALMSPID=DevMSP
+      - CORE_PEER_MSPCONFIGPATH=/crypto/peerOrganizations/devorg.com/users/Admin@devorg.com/msp
+    command: /bin/bash
+    volumes:
+        - ./crypto-config:/crypto
+        - ./artifacts:/artifacts
+        - ./chaincode:/opt/gopath/src/github.com/Zzocker/abc/chaincode
+    depends_on:
+        - devpeer
+    networks:
+      - fabric
+    depends_on: 
+        - devpeer
+        - orderer

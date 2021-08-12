@@ -12,3 +12,7 @@ secure-fabric/**/package-lock.json
 secure-fabric/**/lib
 .nyc_output
 coverage
+vendor
+artifacts
+crypto-config
+secure-fabric/test/fabric-network/chaincode/go.sum

@@ -25,8 +25,8 @@ component "auditor1.organization" as auditor1{
     node "Certificate\nDatastore" as certStore
     client <-[dashed]> app: request \n{authType : Vault|Client}
     app --> ca
-    app --> vault
-    app --> certStore
+    app --> vault: sign message
+    app ---> certStore: store cert of client
     app <-> network
 }
 

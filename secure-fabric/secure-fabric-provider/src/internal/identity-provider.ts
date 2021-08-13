@@ -1,8 +1,8 @@
-import { ICryptoSuite, User } from '@zzocker/fabric-common';
-import { IdentityProvider, Identity, IdentityData } from '@zzocker/fabric-network';
+import { ICryptoSuite, User } from 'fabric-common';
+import { IdentityProvider, Identity, IdentityData } from 'fabric-network';
 
-export { Identity, IdentityData } from '@zzocker/fabric-network';
-export { User } from '@zzocker/fabric-common';
+export { Identity, IdentityData } from 'fabric-network';
+export { User } from 'fabric-common';
 // InternalIdentityProvider : a abstract class which will be implemented by identity provider
 // in this repo
 // some of the function are just to support the interface provided by the fabric-sdk-node

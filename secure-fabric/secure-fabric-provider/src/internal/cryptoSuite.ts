@@ -1,4 +1,4 @@
-import { ICryptoSuite, ICryptoKey, KeyOpts, ICryptoKeyStore } from '@zzocker/fabric-common';
+import { ICryptoSuite, ICryptoKey, KeyOpts, ICryptoKeyStore } from 'fabric-common';
 import { createHash } from 'crypto';
 import { InternalKey } from './key';
 

@@ -1,5 +1,5 @@
-import CA from '@zzocker/fabric-ca-client';
-import { Gateway, GatewayOptions } from '@zzocker/fabric-network';
+import CA from 'fabric-ca-client';
+import { Gateway, GatewayOptions } from 'fabric-network';
 import chai, { expect } from 'chai';
 import { User, IdentityProvidersType } from '../../src/internal/identity-provider';
 import { VaultTransitClient } from '../../src/vault/client';

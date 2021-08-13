@@ -51,6 +51,7 @@ function joinChannel(){
     echo ""
     echo ""
     echo "joinning devchannel"
+    sleep 5
     docker exec -it cli peer channel join -b /tmp/devchannel.block
     if [ $? != 0 ];then
         echo "failed to join devchannel"

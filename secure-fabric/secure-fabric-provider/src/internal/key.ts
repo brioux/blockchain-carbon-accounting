@@ -1,4 +1,4 @@
-import { ICryptoKey } from '@zzocker/fabric-common';
+import { ICryptoKey } from 'fabric-common';
 
 // internal class used by cryptoSuite, this is just to support interface provided by
 // fabric-sdk-node

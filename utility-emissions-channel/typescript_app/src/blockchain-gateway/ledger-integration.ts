@@ -6,6 +6,7 @@ import {CarbonAccountingRouter} from '../routers/carbonAccounting';
 import {getLedgerConfigs,ILedgerIntegrationConfig} from '../config/ledger-config';
 import {NetEmissionsTokenNetworkContract} from './netEmissionsTokenNetwork';
 import { Logger, LoggerProvider } from '@hyperledger/cactus-common';
+import {LedgerKeychains} from './utils/LedgerKeychains'
 import {PluginKeychainMemory} from '@hyperledger/cactus-plugin-keychain-memory';
 import {PluginKeychainVault} from '@hyperledger/cactus-plugin-keychain-vault';
 import {PluginRegistry} from '@hyperledger/cactus-core';
@@ -27,13 +28,18 @@ export default class LedgerIntegration{
     private readonly ledgerConfig: ILedgerIntegrationConfig;
     private readonly log:Logger;
     private readonly keychainPlugin:PluginKeychainMemory;
+    private readonly ledgerKeychains:LedgerKeychains;
 
     constructor(private readonly app:Express){
         const fntag = `LedgerIntegration#constructor`;
 
         this.ledgerConfig = getLedgerConfigs();
         this.log = LoggerProvider.getOrCreate({label: 'LedgerIntegration',level : this.ledgerConfig.logLevel});
+        
+        this.ledgerKeychains = new LedgerKeychains(this.ledgerConfig);
 
+        /*
+            this has been replaced by new ledgerKeychains class
         this.keychainPlugin = new PluginKeychainMemory({
             instanceId: uuid4(),
             keychainId: this.ledgerConfig.keychainID,
@@ -50,8 +56,9 @@ export default class LedgerIntegration{
             instanceId: uuid4(),
             logLevel: this.ledgerConfig.logLevel
         });
+        */
 
-        const pluginRegistry = new PluginRegistry({plugins : [this.keychainPlugin,certKeychain]});
+        const pluginRegistry = new PluginRegistry({plugins : this.ledgerKeychains.plugins});
 
         // TODO : support infura provider
         const ethClient = new PluginLedgerConnectorXdai({
@@ -62,8 +69,9 @@ export default class LedgerIntegration{
         });
 
         const fabricClient = new PluginLedgerConnectorFabric({
-            pluginRegistry,
+            logLevel: this.ledgerConfig.logLevel,
             connectionProfile: this.ledgerConfig.utilityEmissionsChaincode.network,
+            pluginRegistry,
             cliContainerEnv: {},
             instanceId: uuid4(),
             peerBinary: 'anything',
@@ -78,7 +86,7 @@ export default class LedgerIntegration{
         const netEmissionTokenContract = new NetEmissionsTokenNetworkContract({
             logLevel: this.ledgerConfig.logLevel,
             ethClient,
-            keychainId: this.keychainPlugin.getKeychainId(),
+            keychainId: this.ledgerKeychains.Memory.getKeychainId(),
             contractName: this.ledgerConfig.netEmissionTokenContract.contractInfo.name,
             isDev: this.ledgerConfig.isDev,
             keys: {
@@ -94,7 +102,8 @@ export default class LedgerIntegration{
         const utilityEmissionChannel = new UtilityEmissionsChannel({
             logLevel: this.ledgerConfig.logLevel,
             fabricClient,
-            keychainId: certKeychain.getKeychainId(),
+            //keychainId: certKeychain.getKeychainId(),
+            keychains: this.ledgerKeychains,
             dataStorage
         });
         this.carbonAccountingRouter = new CarbonAccountingRouter({
@@ -122,7 +131,8 @@ export default class LedgerIntegration{
             logLevel: this.ledgerConfig.logLevel,
             fabricClient,
             orgCAs,
-            keychain: certKeychain,
+            //keychain: certKeychain,
+            keychains: this.ledgerKeychains,
             adminUsername: this.ledgerConfig.utilityEmissionsChaincode.adminUsername,
             adminPassword: this.ledgerConfig.utilityEmissionsChaincode.adminPassword
         });
@@ -166,7 +176,7 @@ export default class LedgerIntegration{
                 abi: this.ledgerConfig.netEmissionTokenContract.contractInfo.abi,
                 networks
             };
-            await this.keychainPlugin.set(contractName,json);
+            await this.ledgerKeychains.Memory.set(contractName,json);
         }
     }
 }

@@ -492,6 +492,14 @@
         "affiliation": {
           "type": "string",
           "required": true
+        },
+        "csr": {
+          "type": "string",
+          "required": false
+        },
+        "keychainType": {
+          "type": "string",
+          "required": false,
         }
       }
     }

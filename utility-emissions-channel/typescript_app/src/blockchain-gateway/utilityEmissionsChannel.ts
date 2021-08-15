@@ -4,18 +4,21 @@ import {FabricContractInvocationType, PluginLedgerConnectorFabric} from '@hyperl
 import {IEmissionRecord, IRecordEmissionsInput,IRecordEmissionsOutput, IUpdateEmissionsMintedTokenRequest} from './I-utilityEmissionsChannel';
 import AWSS3 from './utils/aws';
 import {createHash} from 'crypto';
+import {LedgerKeychains} from './utils/LedgerKeychains'
+//import {VaultTransitClient} from '../../../../secure-fabric-provider/src/vault-client'
 
 export interface IUtilityEmissionsChannelOptions{
     logLevel:LogLevelDesc;
     fabricClient:PluginLedgerConnectorFabric;
-    keychainId:string;
+    //keychainId:string;
+    keychains:LedgerKeychains;
     dataStorage:AWSS3;
 }
 
 export class UtilityEmissionsChannel{
     static readonly CLASS_NAME = 'UtilityEmissionsChannel';
 
-    private readonly chanincodeName = 'utilityemissions';
+    private readonly chaincodeName = 'utilityemissions';
     private readonly channelName  = 'utilityemissionchannel';
 
     private readonly log:Logger;
@@ -31,15 +34,31 @@ export class UtilityEmissionsChannel{
         const fnTag =  '#recordEmissions';
         const caller = `${orgName}_${userId}`;
         this.log.debug(`${fnTag} caller : ${caller} , input : %o`,input);
+        //TO-DO the keychain type should be communitated by the client.
+        const keychainType = 'Vault'
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
+        // we need to send an identityProvider when estabishing the gateway connec tion...
+        /*identityProvider = new VaultTransitClient({
+            endpoint: 'http://localhost:8200',
+            mountPath: '/transit',
+            token:'tokenId'})*/
         let jsonResult:any;
         try {
             const result = await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId: this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller
                 },
+                /*gatewayOptions: {
+                    ccp: this.opts.fabricClient.connectionProfile,
+                    identity: caller,
+                    wallet: {
+                        keychainId: this.opts.keychainId,
+                        keychainRef: caller}
+                },*/
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Send,
                 methodName: 'recordEmissions',
                 params: [
@@ -87,15 +106,18 @@ export class UtilityEmissionsChannel{
         const fnTag = '#getEmissionsData';
         const caller = `${orgName}_${userId}`;
         this.log.debug(`${fnTag} caller : ${caller} , input : %o`,input);
+        const keychainType = 'Vault';
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
         let jsonResult:any;
         try {
             const result = await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId : this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller
                 },
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Call,
                 methodName: 'getEmissionsData',
                 params: [input.uuid]
@@ -133,14 +155,17 @@ export class UtilityEmissionsChannel{
         const fnTag = '#getAllEmissionRecords';
         const caller = `${orgName}_${userId}`;
         this.log.debug(`${fnTag} caller : ${caller} input : %o`,input);
+        const keychainType = 'Vault';
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
         try {
             const result = await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId : this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller,
                 },
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Call,
                 methodName: 'getAllEmissionsData',
                 params: [
@@ -191,14 +216,17 @@ export class UtilityEmissionsChannel{
         const fnTag = '#getAllEmissionsDataByDateRange';
         const caller = `${orgName}_${userId}`;
         this.log.debug(`${fnTag} caller : ${caller} input : %o`,input);
+        const keychainType = 'Vault';
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
         try {
             const result = await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId : this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller,
                 },
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Call,
                 methodName: 'getAllEmissionsDataByDateRange',
                 params: [
@@ -246,15 +274,18 @@ export class UtilityEmissionsChannel{
         const fnTag = '#updateEmissionsRecord';
         const caller = this.getUserKey(userId,orgName);
         this.log.debug(`${fnTag} caller: ${caller}, input : %o`,input);
+        const keychainType = 'Vault';
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
         let jsonResult:any;
         try {
             const result = await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId : this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller
                 },
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Send,
                 methodName: 'updateEmissionsRecord',
                 params: [
@@ -297,14 +328,17 @@ export class UtilityEmissionsChannel{
         const fnTag = '#updateEmissionsMintedToken';
         const caller = this.getUserKey(userId,orgName);
         this.log.debug(`${fnTag} caller : ${caller} input : %o`,input);
+        const keychainType = 'Vault';
+        const keychain = this.opts.keychains[keychainType];
+        const keychainId = keychain.getKeychainId();
         try {
             await this.opts.fabricClient.transact({
                 signingCredential: {
-                    keychainId : this.opts.keychainId,
+                    keychainId,
                     keychainRef: caller,
                 },
                 channelName: this.channelName,
-                contractName: this.chanincodeName,
+                contractName: this.chaincodeName,
                 invocationType: FabricContractInvocationType.Send,
                 methodName: 'updateEmissionsMintedToken',
                 params: [

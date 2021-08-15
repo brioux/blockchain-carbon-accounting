@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "allowJs": false,
+    "declaration": true,
+    "alwaysStrict": true,
+    "module": "commonjs",
+    "outDir": "./lib",
+    "rootDir": "./src",
+    "sourceMap": true,
+    "target": "es2017",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true
+  },
+  "include": ["src/"],
+  "exclude": ["node_modules/"]
+}

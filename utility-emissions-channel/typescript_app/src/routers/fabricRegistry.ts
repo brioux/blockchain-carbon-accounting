@@ -38,6 +38,8 @@ export class FabricRegistryRouter{
                 body('userId').isString(),
                 body('orgName').isString(),
                 body('affiliation').isString(),
+                body('keychainType').isString(),
+                body('csr').isString()
             ],
             this.enrollUser.bind(this)
         );
@@ -55,7 +57,9 @@ export class FabricRegistryRouter{
         }
         try {
             const result = await this.opts.fabricRegistry.enrollRegistrar({
-                orgName: req.body.orgName
+                orgName: req.body.orgName,
+                keychainType: "Vault"
+                //csr: optional request to self sign csr 
             });
             res.status(201).json(result);
         } catch (error) {
@@ -79,8 +83,16 @@ export class FabricRegistryRouter{
         const userId = req.body.userId;
         const orgName = req.body.orgName;
         const affiliation = req.body.affiliation;
+        const keychainType = req.body.keychainType;
+        const csr = (req.body.csr.length>0) ? req.body.csr:null;
         try {
-            await this.opts.fabricRegistry.enrollUser(userId,orgName,affiliation);
+            await this.opts.fabricRegistry.enrollUser({
+                orgName,
+                userId,
+                affiliation,
+                keychainType: "Vault",
+                csr});
+
         } catch (error) {
             this.log.debug(`${fnTag} failed to register user : %o`,(error as Error).message);
             return res.status(409).json({msg : (error as Error).message});
@@ -89,6 +101,13 @@ export class FabricRegistryRouter{
         res.status(201).json({
             info:  'USER REGISTERED AND ENROLLED'
         });
+    }
+    private async sign(){
+        try{
+
+        } catch (error){
+
+        }
     }
 
 }

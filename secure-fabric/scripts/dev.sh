@@ -19,6 +19,7 @@ function setupVault(){
     curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "ecdsa-p256"}' http://127.0.0.1:8200/v1/transit/keys/admin
     curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "ecdsa-p256"}' http://127.0.0.1:8200/v1/transit/keys/test-p256
     curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "ecdsa-p384"}' http://127.0.0.1:8200/v1/transit/keys/test-p384
+    curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "ecdsa-p521"}' http://127.0.0.1:8200/v1/transit/keys/test-p521
     curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "aes256-gcm96"}' http://127.0.0.1:8200/v1/transit/keys/keyNotSupported
 }
 

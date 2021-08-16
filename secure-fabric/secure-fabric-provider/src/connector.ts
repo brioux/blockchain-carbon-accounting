@@ -81,7 +81,6 @@ export class SecureFabricConnector {
   async initialize() {
     if (this.opts.registrar !== undefined && this.opts.registrar !== null) {
       if (this.opts.registrar.privateKey !== undefined && this.opts.registrar.privateKey !== null) {
-        // TODO registrar with default identity provider
         this.registrar = new User('registrar');
         const suite = Utils.newCryptoSuite();
         this.registrar.setCryptoSuite(suite);

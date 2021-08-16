@@ -9,6 +9,7 @@ import { load } from 'js-yaml';
 import { join } from 'path';
 import { readFileSync } from 'fs';
 import asPromised from 'chai-as-promised';
+import { randomBytes } from 'crypto';
 chai.use(asPromised);
 
 const ccPath = join(__dirname, '..', '..', '..', 'test', 'fabric-network', 'connection-profile.yaml');
@@ -82,7 +83,8 @@ describe('vault/identity', () => {
       );
     });
 
-    let usernameP256 = 'usernameP256';
+    // in-order to run the test multiple times
+    let usernameP256 = randomBytes(8).toString('hex')
     it('should register client', async () => {
       const secret = await ca.register(
         {

@@ -1,7 +1,8 @@
-import { IdentityData } from '@zzocker/fabric-network';
+import { IIdentityData } from '../identity';
 
-export interface CertificateStore {
-  get(key: string): Promise<IdentityData>;
+
+export interface ICertDatastore {
   has(key: string): Promise<boolean>;
-  put(key: string, identityData: IdentityData): Promise<void>;
+  get(key: string): Promise<IIdentityData>;
+  put(iData: IIdentityData): Promise<void>;
 }

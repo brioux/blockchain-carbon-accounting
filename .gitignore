@@ -16,3 +16,4 @@ vendor
 artifacts
 crypto-config
 secure-fabric/test/fabric-network/chaincode/go.sum
+secure-fabric/**/.certStore

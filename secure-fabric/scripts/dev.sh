@@ -41,6 +41,8 @@ case $CMD in
         ./network.sh clean
         cd ../..
         ##################################
+        # remove cert datastore create during test
+        rm -r secure-fabric-provider/test/.certStore
     ;;
     *)
         echo "$CMD not supported only {prepare|clean}"

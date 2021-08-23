@@ -1,6 +1,6 @@
 # ! /bin/bash
 
-export PATH=${PWD}/bin:${PWD}:$PATH
+export PATH=${PWD}/bin_mac:${PWD}:$PATH
 CC_NAME="basic-transfer"
 CHANNEL_NAME=devchannel
 

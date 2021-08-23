@@ -10,6 +10,12 @@ function setupVault(){
     -p 8200:8200 \
     -e 'VAULT_DEV_ROOT_TOKEN_ID=tokenId' \
     -e 'VAULT_DEV_LISTEN_ADDRESS=0.0.0.0:8200' vault:1.8.1
+
+    #docker run -d --name=firefox \
+    #-p 5800:5800 \
+    #-v /Users/bertrandrioux/datas:/config:rw \
+    #--shm-size 2g \
+    #jlesage/firefox
     
     sleep 10
     # enable transit engine 
@@ -22,9 +28,26 @@ function setupVault(){
     curl --header "X-Vault-Token: tokenId" --request POST --data '{"type" : "aes256-gcm96"}' http://127.0.0.1:8200/v1/transit/keys/keyNotSupported
 }
 
+function setupFabricWebSocketServer(){
+    #cd test/web-socket-client/
+    #if [ ! -d "node_modules" ];then
+    #    npm i
+    #fi
+    #
+    #if [ ! -d "dist" ];then
+    #    npm run build
+    #fi
+    #npm run start
+    #docker build . -t brioux/node-web-app
+    #cd ../../
+
+    docker run --rm --name web-socket-client -p 8500:8080 -d brioux/web-socket-client
+}
+
 case $CMD in
     "prepare")
         setupVault
+        #setupFabricWebSocketServer
         # 
         # start test fabric network
         ##################################
@@ -35,6 +58,7 @@ case $CMD in
     ;;
     "clean")
         docker rm -f vault
+        docker rm -f web-socket-client
         # clean test fabric network
         ##################################
         cd test/fabric-network/

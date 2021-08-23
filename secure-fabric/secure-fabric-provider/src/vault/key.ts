@@ -23,7 +23,7 @@ export interface VaultKeyOptions extends Options {
 }
 export class VaultKey extends InternalKey {
   private readonly classLogger: Logger;
-  private readonly _backend: VaultTransitClient;
+   readonly _backend: VaultTransitClient;
   private readonly keyName: string;
   private readonly crv: string;
   constructor(opts: VaultKeyOptions) {

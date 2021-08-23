@@ -25,6 +25,10 @@ export abstract class InternalIdentityProvider implements IdentityProvider {
 }
 
 export enum IdentityProvidersType {
+  // identity by default provided by fabric-sdk-node wherein private key and certificate
+  // stored together (First approach)
+  Default = 'Default-X.509',
+
   // vault identity provider wherein private key are store with vault transit engine
   // and certificate are store in certData store
   Vault = 'Vault-X.509',

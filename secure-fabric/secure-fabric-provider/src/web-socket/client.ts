@@ -176,29 +176,6 @@ export class FabricWebSocketClient {
   };
 
   /**
-   * @description return EC public key
-   * @param keyName for which public key should be returned
-   * @returns public key
-   */
-  getPub():elliptic.ec.KeyPair {
-    const methodLogger = Util.getMethodLogger(this.classLogger, 'getPub');
-    methodLogger.debug(`Get pub ecdsa key pair`);
-    const ecdsa = new elliptic.ec(this.keyData.curve);
-    const keyString = this.keyData.pubKey;
-    const pub = createPublicKey(keyString);
-    const jwkExportOpts: JwkKeyExportOptions = {
-      format: 'jwk',
-    };
-    const jwk = pub.export(jwkExportOpts);
-    jwk.x = Buffer.from(jwk.x as string, 'base64').toString('hex');
-    jwk.y = Buffer.from(jwk.y as string, 'base64').toString('hex');
-    return ecdsa.keyFromPublic({
-      x: jwk.x,
-      y: jwk.y,
-    });
-  }
-
-  /**
    * @description generate 
    * @param args 
    * @type IClientDigest pass in digest to be signed (e.g.commonName)

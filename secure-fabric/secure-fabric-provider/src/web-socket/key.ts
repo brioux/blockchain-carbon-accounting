@@ -74,7 +74,7 @@ export class WebSocketKey extends InternalKey {
    * @type IClientCsrReq with attribtues required ot build CSR
    * @returns pem encoded csr
    */
-  async generateCSRws(args:IClientCsrReq): Promise<string> {
+  async generateCSR(args:IClientCsrReq): Promise<string> {
     const methodLogger = Util.getMethodLogger(this.classLogger, 'generateCSR');
     methodLogger.debug(`commonName = ${args.commonName}`);
     const newCSR:IWebSocketCSR ={fcn: 'generateCSR', args: args}
@@ -87,7 +87,7 @@ export class WebSocketKey extends InternalKey {
    * @param commonName of the client
    * @returns pem encoded csr
    */
-  async generateCSR(args:IClientCsrReq): Promise<string> {
+  async generateCSRlocal(args:IClientCsrReq): Promise<string> {
     const methodLogger = Util.getMethodLogger(this.classLogger, 'generateCSR');
     methodLogger.debug(`commonName = ${args.commonName}`);
     const pub = new KJUR.crypto.ECDSA({ curve: this.pubKeyData.curve });

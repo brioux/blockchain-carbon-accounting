@@ -1,10 +1,11 @@
-import { X509 } from 'jsrsasign';
+import { X509, KEYUTIL } from 'jsrsasign';
 import { Logger } from 'winston';
 import { Identity, IdentityProvidersType, IdentityData, InternalIdentityProvider, User } from '../internal/identity-provider';
 import { Options, Util } from '../internal/util';
+import WebSocket, { WebSocketServer } from 'ws';
 import { WebSocketKey } from './key';
-import { FabricWebSocketServer } from './server';
 import { WebSocketCryptoSuite } from './cryptoSuite';
+import { Server } from "https";
 
 export interface WSX509Identity extends Identity {
   type: IdentityProvidersType.WebSocket;
@@ -12,6 +13,11 @@ export interface WSX509Identity extends Identity {
     certificate: string;
     keyName:string;
   };
+}
+
+export function getSecWsKey(request){
+  const secKey = request.rawHeaders.findIndex((element) => element == 'Sec-WebSocket-Key');
+  return request.rawHeaders[secKey+1]
 }
 
 interface WSX509IdentityData extends IdentityData {
@@ -24,18 +30,34 @@ interface WSX509IdentityData extends IdentityData {
 }
 
 export interface WSX509ProviderOptions extends Options {
-  port:string
+  server?:Server;
+  port?:string;
 }
 
 export class WSX509Provider extends InternalIdentityProvider {
   readonly type: string = IdentityProvidersType.WebSocket;
   private readonly classLogger: Logger;
-  private readonly FabricWebSocketServer: FabricWebSocketServer;
+  private readonly _wss: WebSocketServer;
+  ws:WebSocket;
+  secWsKey:string;
+
   constructor(opts: WSX509ProviderOptions) {
     super();
     this.classLogger = Util.getClassLogger(opts.logLevel, 'WSX509Provider');
-    this.FabricWebSocketServer = new FabricWebSocketServer({
-      logLevel: opts.logLevel,
+    if (!opts.server && Util.isEmptyString(opts.port)) {
+      throw new Error('require an http server or port number');
+    }
+    this._wss = opts.server ? 
+      new WebSocketServer({ server: opts.server }) : 
+      new WebSocketServer({ port: opts.port });
+
+    this.classLogger.debug(`Initiate web socket server for the identity provider at ${this._wss.url}`);
+    
+    const self=this;
+    this._wss.on('connection', function connection(ws,request) {
+      self.classLogger.debug(`Attach web socket with sec key ${getSecWsKey(request)}`);
+      self.ws=ws;
+      self.secWsKey=getSecWsKey(request);
     });
   }
   async getUserContext(identity: WSX509Identity, name: string): Promise<User> {
@@ -50,17 +72,22 @@ export class WSX509Provider extends InternalIdentityProvider {
     const user = new User(name);
     user.setCryptoSuite(new WebSocketCryptoSuite());
     // get type of curve
+    methodLogger.debug(`Get public key from provided identity crendential certificate`);
     const cert = new X509();
-    cert.readCertPEM(identity.credentials.certificate);
-    const pubKey = cert.getPublicKey() as any;
-    methodLogger.debug(`certificate created using key with size ${pubKey.ecparams.keylen}`);
+    cert.readCertPEM(identity.credentials.certificate); 
+    const pubKeyObj = cert.getPublicKey() as any;
+    const pubKey = KEYUTIL.getPEM(pubKeyObj);
+    methodLogger.debug(`Wait for client web socket connection to be established`);
+    const wsk = new WebSocketKey({
+      ws:this.ws,
+      secWsKey:this.secWsKey,
+      pubKey, 
+      keyName: identity.credentials.keyName,
+      curve: `p${pubKeyObj.ecparams.keylen}` as 'p256' | 'p384',
+      logLevel:methodLogger.level as 'debug' | 'info' | 'error'
+    })
     await user.setEnrollment(
-      new WebSocketKey({
-        keyName: identity.credentials.keyName,
-        FabricWebSocketServer: this.FabricWebSocketServer,
-        logLevel: this.classLogger.level as 'debug' | 'info' | 'error',
-        curve: ('p' + pubKey.ecparams.keylen) as 'p256' | 'p384',
-      }),
+      wsk,
       identity.credentials.certificate,
       identity.mspId
     );

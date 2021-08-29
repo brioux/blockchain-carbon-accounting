@@ -1,8 +1,9 @@
 import { InternalCryptoSuite } from '../internal/cryptoSuite';
-import { WebSocketKey } from './key';
-import { IClientDigest } from './client';
+import { WebSocketKey, IClientDigest } from './key';
+
 export class WebSocketCryptoSuite extends InternalCryptoSuite {
-  async sign(key: WebSocketKey, args: IClientDigest): Promise<Buffer> {
+  async sign(key: WebSocketKey, digest:Buffer): Promise<Buffer> {
+    const args:IClientDigest = {digest,preHashed:true};
     return key.sign(args);
   }
 }

@@ -6,13 +6,13 @@ import WebSocket, {WebSocketServer} from 'ws';
 import { WebSocketKey } from '../../src/web-socket/key';
 import { WebSocketClient, WebSocketClientOptions } from '../../src/web-socket/client';
 import { WSX509Provider,WSX509Identity } from '../../src/web-socket/identity';
-import { startServer, createFabricSocketClient } from "./webSocketTestUtils";
+import { startServer } from "./webSocketTestUtils";
 import { User, IdentityProvidersType } from '../../src/internal/identity-provider';
 import { join } from 'path';
 import { load } from 'js-yaml';
 import { readFileSync } from 'fs';
 import { randomBytes } from 'crypto';
-
+import fs from 'fs';
 chai.use(asPromised);
 
 const port = 8500;
@@ -54,8 +54,9 @@ describe('web-socket/identity', () => {
         server: server,
         logLevel: 'error' 
       });
-      fwsClientAdmin = await createFabricSocketClient(fwsClientAdminOpts);
-      fwsClient = await createFabricSocketClient(fwsClientOpts);
+      // create new admin and test user web socket client instances
+      fwsClientAdmin= new WebSocketClient(fwsClientAdminOpts);
+      fwsClient = new WebSocketClient(fwsClientOpts);
     });
     it('throw if port and server are empty', () => {
       expect(function () {
@@ -66,11 +67,11 @@ describe('web-socket/identity', () => {
       
   describe('methods', () => {
     describe('getUserContext', () => {
-      let adminUser;
+      let adminIdentity:WSX509Identity;
       it('should enroll admin', async () => {
         // open web socket connection between admin client and the Identityprovider server
         await fwsClientAdmin.getKey({keyName: 'admin'});
-        const adminKey = new WebSocketKey({
+        let adminKey = new WebSocketKey({
           ws: identityProvider.ws,
           secWsKey: identityProvider.secWsKey, 
           pubKey: fwsClientAdmin.getPub(),
@@ -79,33 +80,34 @@ describe('web-socket/identity', () => {
           keyName: 'admin'
         });
         const csr = await adminKey.generateCSR({commonName:'admin'});
+        // When done with adminKey close the webSocket connection.
+        // TODO: this should be managed within the client
+        // i.e., when the signature request is complete the client should close the connection
+        // for single use (e.g. sign a CSR) can close the web socket after first request 
+        // however most fabric transactions require multiple signatures... 
+        await fwsClientAdmin.close();
         const resp = await ca.enroll({
           enrollmentID: 'admin',
           enrollmentSecret: 'adminpw',
           csr: csr,
         });
-        // When done with adminKey close it and the webSocket connection.
-        // TODO: this should be managed within the client
-        // i.e., when the signature request is complete the client should close the connection
-        // for single use (e.g. sign a CSR) can close the web socket after sendingback first 
-        // however most fabric transactions require multiple signatures... 
-        //await fwsClientAdmin.close();
-        const identity:WSX509Identity = {
+        adminIdentity = {
           type: IdentityProvidersType.WebSocket,
           credentials: {
             certificate: resp.certificate,
             keyName: 'admin',
           },
           mspId: 'DevMSP',
-        }
-        await fwsClientAdmin.getKey({keyName: 'admin'});
-        adminUser = await identityProvider.getUserContext(
-          identity,'Registrar'
-        );        
+        }      
       });
       // in-order to run the test multiple times
       let usernameP256 = randomBytes(8).toString('hex')
-      it('should register client', async () => {  
+      let adminUser;
+      it('should register client', async () => { 
+        await fwsClientAdmin.getKey({keyName: 'admin'});
+        adminUser = await identityProvider.getUserContext(
+          adminIdentity,'Registrar'
+        ); 
         const secret = await ca.register(
           {
             enrollmentID: usernameP256,
@@ -120,7 +122,7 @@ describe('web-socket/identity', () => {
       it('should enroll client-p256', async () => {
         // open web socket connection between test client and the identityProvider server
         await fwsClient.getKey({keyName: testP256});    
-        const clientKeyP256 = new WebSocketKey({
+        let clientKeyP256 = new WebSocketKey({
           ws: identityProvider.ws,
           secWsKey: identityProvider.secWsKey,  
           pubKey: fwsClient.getPub(),
@@ -129,6 +131,7 @@ describe('web-socket/identity', () => {
           keyName: testP256
         });
         const csr = await clientKeyP256.generateCSR({commonName:usernameP256});
+
         const resp = await ca.enroll({
           enrollmentID: usernameP256,
           enrollmentSecret: 'pw',
@@ -142,30 +145,30 @@ describe('web-socket/identity', () => {
           },
           mspId: 'DevMSP',
         };
+        // close the client and clear the correspoinding web socket key
+        fwsClient.close()
+        clientKeyP256 = null;
       });
-    let gateway: Gateway;
-    it('should successfully query-p256', async () => {
-      await fwsClient.getKey({keyName: testP256});
-      gateway = new Gateway();
-      const opts: GatewayOptions = {
-        identity: clientP256Identity,
-        identityProvider: identityProvider,
-      };
-      await gateway.connect(ccp, opts);
-      const channel = await gateway.getNetwork('devchannel');
-
-      const contract = channel.getContract('basic-transfer');
-      const res = await contract.evaluateTransaction('ReadAsset', 'asset1');
-    });
-
-    it('should successfully invoke-p256', async () => {
-      const channel = await gateway.getNetwork('devchannel');
-      const contract = channel.getContract('basic-transfer');
-      await contract.submitTransaction('TransferAsset', 'asset1', 'newOwner3');
-      gateway.disconnect();
-    });
-    
+      let gateway: Gateway;
+      it('should successfully query-p256', async () => {
+        await fwsClient.getKey({keyName: testP256});
+        gateway = new Gateway();
+        const opts: GatewayOptions = {
+          identity: clientP256Identity,
+          identityProvider: identityProvider,
+        };
+        await gateway.connect(ccp, opts);
+        const channel = await gateway.getNetwork('devchannel');
+        const contract = channel.getContract('basic-transfer');
+        const res = await contract.evaluateTransaction('ReadAsset', 'asset1');
+        console.log(res.toString())
+      });
+      it('should successfully invoke-p256', async () => {
+        const channel = await gateway.getNetwork('devchannel');
+        const contract = channel.getContract('basic-transfer');
+        await contract.submitTransaction('TransferAsset', 'asset1', 'newOwner5');
+        gateway.disconnect();
+      });
     });
   });
-  
 });

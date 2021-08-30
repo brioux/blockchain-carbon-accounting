@@ -4,7 +4,7 @@ import { expect } from 'chai';
 import { createHash } from 'crypto';
 import {WebSocketServer} from 'ws';
 import fs from 'fs';
-import { startServer, startWebSocketServer, createFabricSocketClient } from "./webSocketTestUtils";
+import { startServer } from "./webSocketTestUtils";
 
 const port = 8500;
 const testP256 = 'test-p256';
@@ -22,6 +22,9 @@ describe('web-socket/client', () => {
       fws = ws;
       //console.log(`SEC Key: ${getSecWsKey(request)}`)
     });
+    fwsClient = new WebSocketClient({
+      host: `ws://localhost:${port}`, logLevel: 'error'
+    })
   })
   after(async () => {
     await fwsClient.close();
@@ -30,9 +33,9 @@ describe('web-socket/client', () => {
 
   describe('constructor', async () => {
     it('should create a WebSocketServer', async() => { 
-      fwsClient = await createFabricSocketClient({
+      new WebSocketClient({
         host: `ws://localhost:${port}`, logLevel: 'error'
-      });
+      })
     });
     it('throw if host is empty', () => {
       expect(function () {

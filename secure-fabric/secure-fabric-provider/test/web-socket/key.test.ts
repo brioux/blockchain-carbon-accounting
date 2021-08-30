@@ -4,7 +4,7 @@ import { getSecWsKey } from '../../src/web-socket/identity';
 import { expect } from 'chai';
 import { createHash } from 'crypto';
 import WebSocket, {WebSocketServer} from 'ws';
-import { startServer, createFabricSocketClient } from "./webSocketTestUtils";
+import { startServer } from "./webSocketTestUtils";
 
 const port = 8500;
 const testP256 = 'test-p256';
@@ -29,7 +29,7 @@ describe('web-socket/key', () => {
       curve:'p256',
       logLevel: 'error'
     }
-    fwsClient = await createFabricSocketClient(fwsClientOpts);
+    fwsClient = new WebSocketClient(fwsClientOpts);
   })
   after(async () => {
     await fwsClient.close();
@@ -37,6 +37,8 @@ describe('web-socket/key', () => {
   })    
   describe('constructor', async () => {
     it('should create a WebSocketKey instance', async() => { 
+      // get a new p256 key and crate websocket connection
+      await fwsClient.getKey({keyName: testP256, curve: 'p256'});
       fwsKey = new WebSocketKey({
         ws:fws, 
         secWsKey:secWsKey,
@@ -85,7 +87,8 @@ describe('web-socket/key', () => {
       
       it('sign-with-hashed-message-p384', async () => {
         const args:IClientDigest = {digest,preHashed:false}
-        await fwsClient.getKey({keyName: testP384});
+        // get a new p384 key and crate websocket connection
+        await fwsClient.getKey({keyName: testP384, curve: 'p384'});
         fwsKey = new WebSocketKey({
           ws:fws, 
           secWsKey,
@@ -100,12 +103,12 @@ describe('web-socket/key', () => {
     describe('generateCSR', () => {
       it('for-p256', async () => {
         const args:IClientCsrReq = {commonName: 'user'}
-        await fwsClient.getKey({keyName: testP384})
+        await fwsClient.getKey({keyName: testP256})
         fwsKey = new WebSocketKey({
           ws:fws,
           secWsKey,
           pubKey: fwsClient.getPub(),
-          curve: 'p384',
+          curve: 'p256',
           logLevel: 'error' 
         });
         const csr = await fwsKey.generateCSR(args);

@@ -3,7 +3,7 @@ import { Logger } from 'winston';
 import { Identity, IdentityProvidersType, IdentityData, InternalIdentityProvider, User } from '../internal/identity-provider';
 import { Options, Util } from '../internal/util';
 import WebSocket, { WebSocketServer } from 'ws';
-import { WebSocketKey } from './key';
+import { WebSocketKey, WebSocketKeyOptions } from './key';
 import { WebSocketCryptoSuite } from './cryptoSuite';
 import { Server } from "https";
 
@@ -62,7 +62,7 @@ export class WSX509Provider extends InternalIdentityProvider {
   }
   async getUserContext(identity: WSX509Identity, name: string): Promise<User> {
     const methodLogger = Util.getMethodLogger(this.classLogger, 'getUserContext');
-    methodLogger.debug(`get user context for ${name} with identity = \n%o`, identity);
+    methodLogger.debug(`get user context for ${name} with: = \n%o`, identity);
     if (identity === undefined) {
       throw new Error('require identity');
     } else if (Util.isEmptyString(name)) {
@@ -77,17 +77,18 @@ export class WSX509Provider extends InternalIdentityProvider {
     cert.readCertPEM(identity.credentials.certificate); 
     const pubKeyObj = cert.getPublicKey() as any;
     const pubKey = KEYUTIL.getPEM(pubKeyObj);
-    methodLogger.debug(`Wait for client web socket connection to be established`);
-    const wsk = new WebSocketKey({
+    let webSocketKey
+    const wsKeyOptions:WebSocketKeyOptions={
       ws:this.ws,
       secWsKey:this.secWsKey,
       pubKey, 
       keyName: identity.credentials.keyName,
       curve: `p${pubKeyObj.ecparams.keylen}` as 'p256' | 'p384',
       logLevel:methodLogger.level as 'debug' | 'info' | 'error'
-    })
+    }
+    webSocketKey = new WebSocketKey(wsKeyOptions) ;
     await user.setEnrollment(
-      wsk,
+      webSocketKey,
       identity.credentials.certificate,
       identity.mspId
     );

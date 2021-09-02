@@ -4,6 +4,7 @@ import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { Key } from '../../src/internal/key';
 import { WSX509Provider,WSX509Identity,waitForSocketClient} from '../../src/web-socket/identity';
+import { WebSocketClient } from '../../../test/web-socket-client/src/client';
 import { startServer } from "./webSocketTestUtils";
 import { User, IdentityProvidersType } from '../../src/internal/identity-provider';
 import { join } from 'path';
@@ -17,8 +18,9 @@ const port = 8500;
 const testP256 = 'test-p256';
 const testP384 = 'test-p384';
 let server;
-const adminPubKeyHex='042c9232b11b5806f588f3c51d7d0ad4c699e168fb441ac27997b42ffff8ec431016b080556e98a40a5073917989bf01d64eaeb4c6bfc66d0aab966d7e2b82ae6a';
-const userPubKeyHex='045f00bea5d3b16acbcbbf608b9f04fbc30d82d4c4a61092a9381d5d0579ddf798b75b9d11504084995f85c0567542bccd52c47b21cd3b6cefa247d451e58092d1'
+
+let wsClientAdmin:WebSocketClient;
+let wsClient:WebSocketClient;
 
 let identityProvider:WSX509Provider;
 
@@ -32,6 +34,10 @@ describe('web-socket/identity', () => {
     ca = new CA('http://localhost:7054');
   })
   after(async () => {
+    /*console.log(`Close the admin web-socket connection`);
+    wsClientAdmin.close();
+    console.log(`Close the user web-socket connection`);
+    wsClient.close();*/
     server.close();
   })    
   describe('constructor', async () => {
@@ -53,12 +59,24 @@ describe('web-socket/identity', () => {
   describe('methods', () => {
     describe('getUserContext', () => {
       let adminIdentity:WSX509Identity;
+      let adminPubKeyHex;
       it('should enroll admin', async () => {
+        /*wsClientAdmin = new WebSocketClient({
+          host: `ws://localhost:${port}`,
+          keyName: 'admin',logLevel:'error'});
+        adminPubKeyHex=wsClientAdmin.getPubKeyHex();
+        await wsClientAdmin.open();*/
         // Wait for client to establish web socket connetion ith idenity provider
-        await waitForSocketClient(identityProvider.clients[adminPubKeyHex],adminPubKeyHex)
+        const adminPubKeyHex = '046f09d267ef5a8749b7f2b2cdb39ca98bc7b3f1675261cd53d1dc09b819f0c4ef73d3c89557f982c5b75332e12e34e66981e75867d0cf173e13ad46457edef70d'
+        await waitForSocketClient(
+          identityProvider.clients,adminPubKeyHex,
+          identityProvider._wss.address()['port'])
+        
         const adminKey = new Key(
-          adminPubKeyHex.substring(0,6),
+          adminPubKeyHex.substring(0,12),
           identityProvider.clients[adminPubKeyHex]);
+
+        console.log(`Generate and request signature from pubKey: ${adminPubKeyHex.substring(0,12)}...`);
         const csr = await adminKey.generateCSR('admin');
         const resp = await ca.enroll({
           enrollmentID: 'admin',
@@ -69,18 +87,19 @@ describe('web-socket/identity', () => {
           type: IdentityProvidersType.WebSocket,
           credentials: {
             certificate: resp.certificate
-            //,.pubKeyHex: adminPubKeyHex
           },
           mspId: 'DevMSP',
         }      
       });
+      let adminUser;
       // in-order to run the test multiple times
       let usernameP256 = randomBytes(8).toString('hex')
-      let adminUser;
       it('should register client', async () => { 
+        console.log('register user')
         adminUser = await identityProvider.getUserContext(
           adminIdentity,'Registrar'
         ); 
+        console.log(`Register a user account with commonName ${usernameP256}`);
         const secret = await ca.register(
           {
             enrollmentID: usernameP256,
@@ -91,25 +110,36 @@ describe('web-socket/identity', () => {
         );
         expect(secret).to.be.eql('pw');
       })
-      let clientP256Identity: WSX509Identity;
+      let userIdentity: WSX509Identity;
+      const userPubKeyHex = '04176790705bc403f2221c8a17b7c78275857f3cbee217cb5503e3122cc7f87f0836633cd59e67b5bf611552723e2da8712bd241ca57022555175984910f3278b6'
+
       it('should enroll client-p256', async () => {
         // Wait for client to establish web socket connetion ith idenity provider
-        await waitForSocketClient(identityProvider.clients[userPubKeyHex],userPubKeyHex)
-        const clientKeyP256 = new Key(
-          userPubKeyHex.substring(0,6),
+        wsClient = new WebSocketClient({
+          host: `ws://localhost:${port}`,
+          keyName: 'user',logLevel:'error'});
+        const userPubKeyHex=wsClient.getPubKeyHex();
+        await wsClient.open();
+
+        await waitForSocketClient(
+          identityProvider.clients,userPubKeyHex,
+          identityProvider._wss.address()['port'])
+        const userKey = new Key(
+          userPubKeyHex.substring(0,12),
           identityProvider.clients[userPubKeyHex]
         );
-        const csr = await clientKeyP256.generateCSR(usernameP256);
+        console.log(`Generate csr for ${usernameP256} and request signature from pubKey: ${userPubKeyHex.substring(0,12)}...`);
+        const csr = await userKey.generateCSR(usernameP256);
+        console.log(`Enroll ${usernameP256} pubKey: ${userPubKeyHex.substring(0,12)}...`)
         const resp = await ca.enroll({
           enrollmentID: usernameP256,
           enrollmentSecret: 'pw',
           csr: csr,
         });
-        clientP256Identity = {
+        userIdentity = {
           type: IdentityProvidersType.WebSocket,
           credentials: {
             certificate: resp.certificate
-            //,pubKeyHex:userPubKeyHex
           },
           mspId: 'DevMSP',
         };
@@ -118,9 +148,10 @@ describe('web-socket/identity', () => {
       it('should successfully query-p256', async () => {
         gateway = new Gateway();
         const opts: GatewayOptions = {
-          identity: clientP256Identity,
+          identity: userIdentity,
           identityProvider: identityProvider,
         };
+        console.log(`Create gateway for ${usernameP256} with pubKey: ${userPubKeyHex.substring(0,12)}...`)
         await gateway.connect(ccp, opts);
         const channel = await gateway.getNetwork('devchannel');
         const contract = channel.getContract('basic-transfer');

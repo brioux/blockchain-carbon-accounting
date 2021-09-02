@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "experimenta.lDecorators": true,
+    "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
     "target": "es2017",
     "moduleResolution": "node",

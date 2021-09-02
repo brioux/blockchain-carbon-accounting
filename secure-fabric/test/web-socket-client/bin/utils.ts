@@ -16,15 +16,12 @@ function showHelp() {
 }
 
 async function getClient(host,args:IClientNewKey) {                                                          
-    const wsClient = new WebSocketClient({
-        host,
-        logLevel: 'error',
-    })
+    const wsClient = new WebSocketClient({host})
     console.log(wsClient.initKey(args));
     console.log(`Built client to connect to host: ${host}`)
-    const res = await wsClient.open();
-    console.log(res);
+    await wsClient.open();
 }
+//async function closeClients(client,args:IClientNewKey) { 
 
 async function generateKey(args:IClientNewKey) {                                                            
     const res = keyGen(args);

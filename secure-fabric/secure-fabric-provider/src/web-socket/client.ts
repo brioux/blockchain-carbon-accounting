@@ -60,10 +60,10 @@ export class WebSocketClient implements InternalIdentityClient {
   private readonly log: Logger;
   private readonly backend: WebSocket;
   private readonly curve: ECCurveType;
-  private readonly pubKeyHex:string;
   private readonly secWsKey:string;
-  private readonly pubKeyEcdsa:any;//KJUR.crypto.ECDSA;
+  private readonly pubKeyEcdsa:any; //KJUR.crypto.ECDSA for csr requests;
   private readonly pubKeyObj; // pubKey from elliptic node pacakge for verifying digest signatures
+  readonly pubKeyHex:string;
   // Array of Digests to queue signing requests in series
   digestQueue:IDigestQueue[]
   processing:boolean;
@@ -82,8 +82,8 @@ export class WebSocketClient implements InternalIdentityClient {
     this.log.debug(`New web-socket client for publicKey ${this.pubKeyHex.substring(0,6)}`);
     
     this.log.debug(`Build ECDSA curve required by abstract class InternalIdentityClient`);
-    //this.pubKeyEcdsa = new KJUR.crypto.ECDSA({'curve': ECCurveLong[this.curve], 'pub': this.pubKeyHex});
-    this.pubKeyEcdsa = KEYUTIL.getKey(this.pubKeyHex, null, "pkcs8pub")
+    this.pubKeyEcdsa = new KJUR.crypto.ECDSA({'curve': ECCurveLong[this.curve], 'pub': this.pubKeyHex});
+    //this.pubKeyEcdsa = KEYUTIL.getKey(this.pubKeyHex, null, "pkcs8pub")
     
     this.log.debug(`Initialize elliptic key used to verify incoming signatures`);
     const EC = elliptic.ec;
@@ -96,7 +96,7 @@ export class WebSocketClient implements InternalIdentityClient {
       self.verify(signature);
     });
     this.backend.onclose = function () {
-      self.log.debug(`WebSocket connection closed for public key ${this.pubKeyHex.substring(0,6)}...`);
+      self.log.debug(`WebSocket connection closed for public key ${this.pubKeyHex.substring(0,12)}...`);
       //self.backend = null;
     };
   };
@@ -110,7 +110,7 @@ export class WebSocketClient implements InternalIdentityClient {
   async sign(keyName: string, digest: Buffer): Promise<ISignatureResponse> {
     const fnTag = `${this.className}#sign`;
     this.log.debug(
-      `Sign digest for pubKey ${this.pubKeyHex.substring(0,6)}: digestSize = ${digest.length}`,
+      `Sign digest for pubKey ${this.pubKeyHex.substring(0,12)}: digestSize = ${digest.length}`,
     );
     if(this.processing){
       throw new Error('a digest is still being signed by the client');
@@ -131,8 +131,9 @@ export class WebSocketClient implements InternalIdentityClient {
    * @return ECDSA curve
    */
   async getPub(keyName: string): Promise<KJUR.crypto.ECDSA> {
+    const self = this
     return new Promise(function (resolve) {
-      resolve(this.pubKeyEcdsa)
+      resolve(self.pubKeyEcdsa)
     });
   }
   /**

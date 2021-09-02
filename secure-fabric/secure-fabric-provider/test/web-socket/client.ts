@@ -1,5 +1,4 @@
-import { WebSocketClient, WebSocketClientOptions } from '../../src/web-socket/client';
-import { WebSocketKey, WebSocketKeyOptions, IClientDigest, IClientCsrReq, } from '../../src/web-socket/key';
+import { WebSocketClient, WebSocketClientOptions, IClientDigest, IClientCsrReq, } from '../../src/web-socket/client';
 import { getSecWsKey } from '../../src/web-socket/identity';
 import { expect } from 'chai';
 import { createHash } from 'crypto';
@@ -11,11 +10,11 @@ const testP256 = 'test-p256';
 const testP384 = 'test-p384';
 let server;
 let fwsClient:WebSocketClient;
-let fwsKey:WebSocketKey;
+let fwsKey:WebSocketClient;
 let fws:WebSocket;
 let secWsKey;
 
-describe('web-socket/key', () => {
+describe('web-socket/client', () => {
   before (async () => {
     server = await startServer(port);
     const wss = new WebSocketServer({ server });
@@ -36,10 +35,10 @@ describe('web-socket/key', () => {
     server.close();
   })    
   describe('constructor', async () => {
-    it('should create a WebSocketKey instance', async() => { 
+    it('should create a WebSocketClient instance', async() => { 
       // get a new p256 key and crate websocket connection
       await fwsClient.getKey({keyName: testP256, curve: 'p256'});
-      fwsKey = new WebSocketKey({
+      fwsKey = new WebSocketClient({
         ws:fws, 
         secWsKey:secWsKey,
         pubKey: fwsClient.getPub(),
@@ -48,7 +47,7 @@ describe('web-socket/key', () => {
       });
     });
     it('throw if pubKey is empty', () => {
-      const wskOpts:WebSocketKeyOptions = {
+      const wskOpts:WebSocketClientOptions = {
         ws:fws,
         secWsKey:secWsKey,
         pubKey:'', 
@@ -57,11 +56,11 @@ describe('web-socket/key', () => {
         logLevel:'error',
       }
       expect(function () {
-        new WebSocketKey(wskOpts);
+        new WebSocketClient(wskOpts);
       }).to.throw('pubKey pem should not be empty');
     });
     /*it('throw if secWsKey is empty', () => {
-      const wskOpts:WebSocketKeyOptions = {
+      const wskOpts:WebSocketClientOptions = {
         ws:fws,
         secWsKey:'',
         pubKey:fwsClient.getPub(), 
@@ -70,7 +69,7 @@ describe('web-socket/key', () => {
         logLevel:'error',
       }
       expect(function () {
-        new WebSocketKey(wskOpts);
+        new WebSocketClient(wskOpts);
       }).to.throw('secWsKey should not be empty');
     });*/
   });
@@ -89,7 +88,7 @@ describe('web-socket/key', () => {
         const args:IClientDigest = {digest,preHashed:false}
         // get a new p384 key and crate websocket connection
         await fwsClient.getKey({keyName: testP384, curve: 'p384'});
-        fwsKey = new WebSocketKey({
+        fwsKey = new WebSocketClient({
           ws:fws, 
           secWsKey,
           pubKey: fwsClient.getPub(),
@@ -104,7 +103,7 @@ describe('web-socket/key', () => {
       it('for-p256', async () => {
         const args:IClientCsrReq = {commonName: 'user'}
         await fwsClient.getKey({keyName: testP256})
-        fwsKey = new WebSocketKey({
+        fwsKey = new WebSocketClient({
           ws:fws,
           secWsKey,
           pubKey: fwsClient.getPub(),

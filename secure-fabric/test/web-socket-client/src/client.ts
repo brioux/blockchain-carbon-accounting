@@ -3,41 +3,44 @@ import { Logger } from 'winston';
 import fs from 'fs'; 
 import elliptic from 'elliptic';
 import { Options, Util } from './util';
-import { keyGen, getKeyPath, 
+import { keyGen, getKeyPath, getPubKeyHex, 
   IClientNewKey, KeyData, 
   ECCurveType, ECCurveLong } from './key';
 const jsrsasign = require('jsrsasign');
-
-export interface WebSocketClientOptions extends Options {
-  host:string;
-  keyName?:string;
-  curve?:ECCurveType;
-}
 
 type IecdsaCurves = {
   [key:string]:elliptic.ec; 
 };
 
-export class WebSocketClient {
-  private readonly classLogger: Logger;
-  private keyData: KeyData;
-  keyName: string;
-  ws: WebSocket;
-  private readonly host: string;
-  private ecdsaCurves:IecdsaCurves;
+interface WSClientOtions {
+  host:string;
+  keyName?:string;
+  curve?:ECCurveType;
+  logLevel?:string; 
+}
 
-  constructor(opts: WebSocketClientOptions) {
-    this.classLogger = Util.getClassLogger(opts.logLevel, 'WebSocket Client');
+
+export class WebSocketClient {
+  private readonly host;
+  private keyData: KeyData;
+  private ws: WebSocket;
+  private ecdsaCurves:IecdsaCurves;
+  private readonly classLogger: Logger;
+  keyName:string;
+
+  curve:ECCurveType;
+  constructor(opts:WSClientOtions){
     if (Util.isEmptyString(opts.host)) {
       throw new Error('require host address of web socket server');
     }
+    opts.logLevel = opts.logLevel || 'error'
+    this.classLogger = Util.getClassLogger(opts.logLevel, 'WebSocketClient');
+    
+    this.host = opts.host;
+    opts.keyName = opts.keyName || 'default';
 
-    opts.keyName = opts.keyName || 'default'
-    this.keyName = opts.keyName;
     this.initKey({keyName: opts.keyName, curve: opts.curve})
-    this.host = opts.host
-
-    this.classLogger.debug('Initialize supported ECDSA curves used sign method');
+    this.classLogger.debug('Initialize supported ECDSA curves used by the sign method');
     const EC = elliptic.ec;
     this.ecdsaCurves={};
     for (const value in ECCurveType) {
@@ -60,6 +63,7 @@ export class WebSocketClient {
       info.push(keyGen(args))
     }
     info.push(`Extracting key '${args.keyName}' from key store`)
+    this.keyName = args.keyName;
     this.keyData = JSON.parse(fs.readFileSync(keyPath,'utf8'));
     if(args.curve && this.keyData.curve !== args.curve){
       info.push(`The requested curve type (${args.curve}) is different than the existing key: ${this.keyData.curve}`)
@@ -89,10 +93,10 @@ export class WebSocketClient {
     const methodLogger = Util.getMethodLogger(this.classLogger, 'open')
     await this.close();
     try{
-      methodLogger.debug(`Open new WebSocket to host: ${this.host}`);
       const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
-      methodLogger.debug(`Append pubKeyHex and curve type as params to the web socket URL`); 
-      this.ws = new WebSocket(`${this.host}?pubKeyHex=${pubKeyHex}&crv=${this.keyData.curve}`);
+      const wsHostUrl = `${this.host}/?pubKeyHex=${pubKeyHex}&crv=${this.keyData.curve}`;
+      methodLogger.debug(`Open new WebSocket to host: ${wsHostUrl}`);
+      this.ws = new WebSocket(wsHostUrl);
       await waitForSocketState(this.ws, this.ws.OPEN);
     }catch(error){
       throw new Error(`Error creating web-socket connection to host ${this.host}: ${error}`);
@@ -107,7 +111,7 @@ export class WebSocketClient {
     };
     const self = this;
     this.ws.onclose = function incoming() {
-      console.log(`Web socket connection to ${this.host} closed for key ${this.keyName}`)
+      console.log(`Web socket connection to ${self.host} closed for key ${self.keyName}`)
       self.ws = null;
     };
     this.ws.on('message', function incoming(message) {
@@ -147,8 +151,9 @@ export class WebSocketClient {
    * @description send out pubKey
    * @return pubKey pem file
    */
-  getPub(){
-    return this.keyData.pubKey;
+  getPubKeyHex(){
+    const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
+    return pubKeyHex
   }
 }
 

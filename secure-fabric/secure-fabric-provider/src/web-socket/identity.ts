@@ -1,17 +1,22 @@
+import { ICryptoSuite, Utils } from "fabric-common";
 import { X509, KEYUTIL } from 'jsrsasign';
 import { Logger } from 'winston';
 import { Identity, IdentityProvidersType, IdentityData, InternalIdentityProvider, User } from '../internal/identity-provider';
 import { Options, Util } from '../internal/util';
 import WebSocket, { WebSocketServer } from 'ws';
-import { WebSocketKey, WebSocketKeyOptions } from './key';
+import { Key } from '../internal/key'; 
+import { ECCurveType } from '../internal/crypto-util'
+import { WebSocketClient } from './client';
 import { WebSocketCryptoSuite } from './cryptoSuite';
 import { Server } from "https";
+import { URLSearchParams } from "url";
+const jsrsasign = require('jsrsasign');
 
 export interface WSX509Identity extends Identity {
   type: IdentityProvidersType.WebSocket;
   credentials: {
     certificate: string;
-    keyName:string;
+    //pubKeyHex: string;
   };
 }
 
@@ -28,21 +33,44 @@ interface WSX509IdentityData extends IdentityData {
   };
   mspId: string;
 }
+interface IClientWebSockets {
+   [key:string]: WebSocket; 
+}
+/*interface IClientWebSocketOn {
+   [key:string]:boolean; 
+}*/
 
 export interface WSX509ProviderOptions extends Options {
   server?:Server;
   port?:string;
 }
 
-export class WSX509Provider extends InternalIdentityProvider {
+export function waitForSocketClient(client:boolean,pubKeyHex?:string): Promise<void> {
+  if(pubKeyHex){
+    console.log(`Waiting for web-socket connection from client with pub key hex: ${pubKeyHex.substring(0,6)}`)}
+  return new Promise(function (resolve) {
+    setTimeout(function () {
+
+      if (client!==null) {
+        console.log(client)
+        resolve();
+        //resolve(socket);
+      } else {
+        console.log('closed')
+        waitForSocketClient(client,null).then(resolve);
+      }
+    });
+  });
+}
+
+export class WSX509Provider implements InternalIdentityProvider {
   readonly type: string = IdentityProvidersType.WebSocket;
   private readonly classLogger: Logger;
-  private readonly _wss: WebSocketServer;
-  ws:WebSocket;
-  secWsKey:string;
+  readonly _wss: WebSocketServer;
+  clients: IClientWebSockets;
+  //clientOn: boolean;
 
   constructor(opts: WSX509ProviderOptions) {
-    super();
     this.classLogger = Util.getClassLogger(opts.logLevel, 'WSX509Provider');
     if (!opts.server && Util.isEmptyString(opts.port)) {
       throw new Error('require an http server or port number');
@@ -51,15 +79,41 @@ export class WSX509Provider extends InternalIdentityProvider {
       new WebSocketServer({ server: opts.server }) : 
       new WebSocketServer({ port: opts.port });
 
+    this.clients = {};
     this.classLogger.debug(`Initiate web socket server for the identity provider at ${this._wss.url}`);
-    
     const self=this;
     this._wss.on('connection', function connection(ws,request) {
-      self.classLogger.debug(`Attach web socket with sec key ${getSecWsKey(request)}`);
-      self.ws=ws;
-      self.secWsKey=getSecWsKey(request);
+      const urlParams = new URLSearchParams(ws.url);
+      const pubKeyHex = urlParams.get('pubKeyHex')
+      const curve = urlParams.get('crv') as ECCurveType;
+      if(!pubKeyHex){
+        throw new Error('no pubKeyHex provided by the web-socket url');
+      }
+      if(!curve){
+        throw new Error('no curve provided by the web-socket url');
+        // TO-DO we can extract the curve data from the pubKeyHex? 
+        // We should not need to pass the crv 
+      }
+      //this.clientOn[pubKeyHex] = true;
+      self.clients[pubKeyHex] = new WebSocketClient({
+        pubKeyHex,
+        curve,
+        ws,
+        secWsKey: getSecWsKey(request),
+        logLevel: this.classLogger
+      });
+      ws.onclose = function () {
+        self.clients[pubKeyHex] = null;
+        //self.clientOn[pubKeyHex] = false;
+      };
     });
   }
+
+  /**
+   * @description get user context for the provided identity file
+   * @note before this method is called the requested identity holder must open 
+   * a websocket connection with the identity provider
+   */
   async getUserContext(identity: WSX509Identity, name: string): Promise<User> {
     const methodLogger = Util.getMethodLogger(this.classLogger, 'getUserContext');
     methodLogger.debug(`get user context for ${name} with: = \n%o`, identity);
@@ -70,28 +124,38 @@ export class WSX509Provider extends InternalIdentityProvider {
     }
 
     const user = new User(name);
-    user.setCryptoSuite(new WebSocketCryptoSuite());
+    //user.setCryptoSuite(new WebSocketCryptoSuite());
+    user.setCryptoSuite(Utils.newCryptoSuite());
+    
     // get type of curve
     methodLogger.debug(`Get public key from provided identity crendential certificate`);
     const cert = new X509();
     cert.readCertPEM(identity.credentials.certificate); 
-    const pubKeyObj = cert.getPublicKey() as any;
-    const pubKey = KEYUTIL.getPEM(pubKeyObj);
-    let webSocketKey
-    const wsKeyOptions:WebSocketKeyOptions={
-      ws:this.ws,
-      secWsKey:this.secWsKey,
-      pubKey, 
-      keyName: identity.credentials.keyName,
-      curve: `p${pubKeyObj.ecparams.keylen}` as 'p256' | 'p384',
-      logLevel:methodLogger.level as 'debug' | 'info' | 'error'
-    }
-    webSocketKey = new WebSocketKey(wsKeyOptions) ;
+    const pubKeyObj = cert.getPublicKey();
+    console.log(cert.getPublicKey())
+    const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(KEYUTIL.getPEM(pubKeyObj));
+    console.log(pubKeyHex)
+    //const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(pubKeyObj);
+    //console.log(pubKeyHex)
+
+    await waitForSocketClient(this.clients[pubKeyHex],pubKeyHex)
+
+    const wsKey = new Key(pubKeyHex.substring(0,6),this.clients[pubKeyHex]);
     await user.setEnrollment(
-      webSocketKey,
+      wsKey,
       identity.credentials.certificate,
       identity.mspId
     );
     return user;
+  }
+
+  getCryptoSuite(): ICryptoSuite {
+    throw new Error('InternalIdentityProvider::getCryptoSuite not required!!');
+  }
+  fromJson(data: IdentityData): WSX509Identity {
+    throw new Error('InternalIdentityProvider::fromJson not required!!');
+  }
+  toJson(identity: Identity): WSX509IdentityData {
+    throw new Error('InternalIdentityProvider::toJso : not required!!');
   }
 }

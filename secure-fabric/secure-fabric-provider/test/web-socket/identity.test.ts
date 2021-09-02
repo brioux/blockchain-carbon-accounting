@@ -2,25 +2,24 @@ import CA from 'fabric-ca-client';
 import { Gateway, GatewayOptions } from 'fabric-network';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
-import WebSocket, {WebSocketServer} from 'ws';
-import { WebSocketKey } from '../../src/web-socket/key';
-import { WebSocketClient, WebSocketClientOptions } from '../../src/web-socket/client';
-import { WSX509Provider,WSX509Identity } from '../../src/web-socket/identity';
+import { Key } from '../../src/internal/key';
+import { WSX509Provider,WSX509Identity,waitForSocketClient} from '../../src/web-socket/identity';
 import { startServer } from "./webSocketTestUtils";
 import { User, IdentityProvidersType } from '../../src/internal/identity-provider';
 import { join } from 'path';
 import { load } from 'js-yaml';
 import { readFileSync } from 'fs';
 import { randomBytes } from 'crypto';
-import fs from 'fs';
+import { Server } from "http";
 chai.use(asPromised);
 
 const port = 8500;
 const testP256 = 'test-p256';
 const testP384 = 'test-p384';
-let server,wss;
-let fwsClientAdmin:WebSocketClient;
-let fwsClient:WebSocketClient;
+let server;
+const adminPubKeyHex='042c9232b11b5806f588f3c51d7d0ad4c699e168fb441ac27997b42ffff8ec431016b080556e98a40a5073917989bf01d64eaeb4c6bfc66d0aab966d7e2b82ae6a';
+const userPubKeyHex='045f00bea5d3b16acbcbbf608b9f04fbc30d82d4c4a61092a9381d5d0579ddf798b75b9d11504084995f85c0567542bccd52c47b21cd3b6cefa247d451e58092d1'
+
 let identityProvider:WSX509Provider;
 
 const ccPath = join(__dirname, '..', '..', '..', 'test', 'fabric-network', 'connection-profile.yaml');
@@ -33,30 +32,16 @@ describe('web-socket/identity', () => {
     ca = new CA('http://localhost:7054');
   })
   after(async () => {
-    await fwsClientAdmin.close();
-    await fwsClient.close();
     server.close();
   })    
   describe('constructor', async () => {
-    
-    const fwsClientAdminOpts:WebSocketClientOptions = {
-      host:`ws://localhost:${port}`,
-      keyName: 'admin',
-      logLevel: 'error'
-    }
-    const fwsClientOpts:WebSocketClientOptions = {
-      host:`ws://localhost:${port}`,
-      keyName: testP256,
-      logLevel: 'error'
-    }
+
     it('should create a WSX509Provider instance', async() => { 
       identityProvider = new WSX509Provider({
         server: server,
         logLevel: 'error' 
       });
       // create new admin and test user web socket client instances
-      fwsClientAdmin= new WebSocketClient(fwsClientAdminOpts);
-      fwsClient = new WebSocketClient(fwsClientOpts);
     });
     it('throw if port and server are empty', () => {
       expect(function () {
@@ -69,23 +54,12 @@ describe('web-socket/identity', () => {
     describe('getUserContext', () => {
       let adminIdentity:WSX509Identity;
       it('should enroll admin', async () => {
-        // open web socket connection between admin client and the Identityprovider server
-        await fwsClientAdmin.getKey({keyName: 'admin'});
-        let adminKey = new WebSocketKey({
-          ws: identityProvider.ws,
-          secWsKey: identityProvider.secWsKey, 
-          pubKey: fwsClientAdmin.getPub(),
-          curve: 'p256',
-          logLevel: 'error',
-          keyName: 'admin'
-        });
-        const csr = await adminKey.generateCSR({commonName:'admin'});
-        // When done with adminKey close the webSocket connection.
-        // TODO: this should be managed within the client
-        // i.e., when the signature request is complete the client should close the connection
-        // for single use (e.g. sign a CSR) can close the web socket after first request 
-        // however most fabric transactions require multiple signatures... 
-        await fwsClientAdmin.close();
+        // Wait for client to establish web socket connetion ith idenity provider
+        await waitForSocketClient(identityProvider.clients[adminPubKeyHex],adminPubKeyHex)
+        const adminKey = new Key(
+          adminPubKeyHex.substring(0,6),
+          identityProvider.clients[adminPubKeyHex]);
+        const csr = await adminKey.generateCSR('admin');
         const resp = await ca.enroll({
           enrollmentID: 'admin',
           enrollmentSecret: 'adminpw',
@@ -94,8 +68,8 @@ describe('web-socket/identity', () => {
         adminIdentity = {
           type: IdentityProvidersType.WebSocket,
           credentials: {
-            certificate: resp.certificate,
-            keyName: 'admin',
+            certificate: resp.certificate
+            //,.pubKeyHex: adminPubKeyHex
           },
           mspId: 'DevMSP',
         }      
@@ -104,7 +78,6 @@ describe('web-socket/identity', () => {
       let usernameP256 = randomBytes(8).toString('hex')
       let adminUser;
       it('should register client', async () => { 
-        await fwsClientAdmin.getKey({keyName: 'admin'});
         adminUser = await identityProvider.getUserContext(
           adminIdentity,'Registrar'
         ); 
@@ -120,18 +93,13 @@ describe('web-socket/identity', () => {
       })
       let clientP256Identity: WSX509Identity;
       it('should enroll client-p256', async () => {
-        // open web socket connection between test client and the identityProvider server
-        await fwsClient.getKey({keyName: testP256});    
-        let clientKeyP256 = new WebSocketKey({
-          ws: identityProvider.ws,
-          secWsKey: identityProvider.secWsKey,  
-          pubKey: fwsClient.getPub(),
-          curve: 'p256',
-          logLevel: 'error',
-          keyName: testP256
-        });
-        const csr = await clientKeyP256.generateCSR({commonName:usernameP256});
-
+        // Wait for client to establish web socket connetion ith idenity provider
+        await waitForSocketClient(identityProvider.clients[userPubKeyHex],userPubKeyHex)
+        const clientKeyP256 = new Key(
+          userPubKeyHex.substring(0,6),
+          identityProvider.clients[userPubKeyHex]
+        );
+        const csr = await clientKeyP256.generateCSR(usernameP256);
         const resp = await ca.enroll({
           enrollmentID: usernameP256,
           enrollmentSecret: 'pw',
@@ -140,18 +108,14 @@ describe('web-socket/identity', () => {
         clientP256Identity = {
           type: IdentityProvidersType.WebSocket,
           credentials: {
-            certificate: resp.certificate,
-            keyName: testP256,
+            certificate: resp.certificate
+            //,pubKeyHex:userPubKeyHex
           },
           mspId: 'DevMSP',
         };
-        // close the client and clear the correspoinding web socket key
-        fwsClient.close()
-        clientKeyP256 = null;
       });
       let gateway: Gateway;
       it('should successfully query-p256', async () => {
-        await fwsClient.getKey({keyName: testP256});
         gateway = new Gateway();
         const opts: GatewayOptions = {
           identity: clientP256Identity,

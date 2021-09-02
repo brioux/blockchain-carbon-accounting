@@ -1,10 +1,10 @@
 import { ICryptoSuite, ICryptoKey, KeyOpts, ICryptoKeyStore } from 'fabric-common';
 import { createHash } from 'crypto';
-import { InternalKey } from './key';
+import { Key } from './key';
 
 export abstract class InternalCryptoSuite implements ICryptoSuite {
   createKeyFromRaw(pem: string): ICryptoKey {
-    return new InternalKey();
+    return new Key();
   }
   decrypt(key: ICryptoKey, cipherText: Buffer, opts: any): Buffer {
     throw new Error('InternalCryptoSuite::decrypt : not required!!');

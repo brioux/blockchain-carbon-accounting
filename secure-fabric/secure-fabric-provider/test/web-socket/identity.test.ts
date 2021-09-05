@@ -3,9 +3,9 @@ import { Gateway, GatewayOptions } from 'fabric-network';
 import chai, { expect } from 'chai';
 import asPromised from 'chai-as-promised';
 import { Key } from '../../src/internal/key';
-import { WSX509Provider,WSX509Identity,waitForSocketClient} from '../../src/web-socket/identity';
+import { WSX509Provider,WSX509Identity} from '../../src/web-socket/identity';
 import { WebSocketClient } from '../../../test/web-socket-client/src/client';
-import { startServer } from "./webSocketTestUtils";
+import { startServer, waitForSocketClient } from "./webSocketTestUtils";
 import { User, IdentityProvidersType } from '../../src/internal/identity-provider';
 import { join } from 'path';
 import { load } from 'js-yaml';
@@ -67,7 +67,9 @@ describe('web-socket/identity', () => {
         adminPubKeyHex=wsClientAdmin.getPubKeyHex();
         await wsClientAdmin.open();*/
         // Wait for client to establish web socket connetion ith idenity provider
-        const adminPubKeyHex = '046f09d267ef5a8749b7f2b2cdb39ca98bc7b3f1675261cd53d1dc09b819f0c4ef73d3c89557f982c5b75332e12e34e66981e75867d0cf173e13ad46457edef70d'
+        const adminPubKeyHex = '04488af79edb4048a65e5d8e82feabf9683f2af09cd1a92fc99147bbe1031ec80b1f9ba3b03ffcfaffb4b0cafc54b41c6bc58053ac0e004bc87bbe4e32d9a86b03'
+        const sessionId = identityProvider.webSocketSessionId(adminPubKeyHex);
+        console.log(`sessionId: ${sessionId}`);
         await waitForSocketClient(
           identityProvider.clients,adminPubKeyHex,
           identityProvider._wss.address()['port'])
@@ -111,15 +113,11 @@ describe('web-socket/identity', () => {
         expect(secret).to.be.eql('pw');
       })
       let userIdentity: WSX509Identity;
-      const userPubKeyHex = '04176790705bc403f2221c8a17b7c78275857f3cbee217cb5503e3122cc7f87f0836633cd59e67b5bf611552723e2da8712bd241ca57022555175984910f3278b6'
-
+      const userPubKeyHex = '04beac60b7a61716a87167893943667e470a7e21a215568422552d075ff39c1610b1174ea8ca9a4ae16d5d8f1736be71a292cdaa3c83c7b45ce9443f38a61e96cd';
       it('should enroll client-p256', async () => {
-        // Wait for client to establish web socket connetion ith idenity provider
-        wsClient = new WebSocketClient({
-          host: `ws://localhost:${port}`,
-          keyName: 'user',logLevel:'error'});
-        const userPubKeyHex=wsClient.getPubKeyHex();
-        await wsClient.open();
+        // Wait for client to establish web socket connetion with idenity provider
+        const sessionId = identityProvider.webSocketSessionId(userPubKeyHex);
+        console.log(`sessionId: ${sessionId}`);
 
         await waitForSocketClient(
           identityProvider.clients,userPubKeyHex,

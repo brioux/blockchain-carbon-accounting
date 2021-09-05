@@ -5,7 +5,7 @@ import { keyGen, getPubKeyHex, listKeys, IClientNewKey } from '../src/key';
 let usage = "\nUsage: ws-client\n";
 usage+="\tnew-key <keyname> [<curve>]\t" + "Generate a new key with optional curve: 'p256' | 'p384\n"
 usage+="\tget-pkh <keyname>          \t" + "Get publick key hex of keyname\n"
-usage+="\tconnect <host> [<keyname>] \t" + "connect to ws host. keyname optional (use default)\n"
+usage+="\tconnect <host> <sessionId> [<keyname>] \t" + "connect sessionId with host of web socket server. keyname optional (use default)\n"
 
 function showHelp() {                                                            
     console.log(usage);   
@@ -15,11 +15,11 @@ function showHelp() {
     console.log('   \t--help   \t' + 'Show help.          ' + '\t\t' + '[boolean]\n')
 }
 
-async function getClient(host,args:IClientNewKey) {                                                          
+async function getClient(host,sessionId,args:IClientNewKey) {                                                          
     const wsClient = new WebSocketClient({host})
     console.log(wsClient.initKey(args));
     console.log(`Built client to connect to host: ${host}`)
-    await wsClient.open();
+    await wsClient.open(sessionId);
 }
 //async function closeClients(client,args:IClientNewKey) { 
 

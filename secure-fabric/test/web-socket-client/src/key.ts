@@ -41,7 +41,6 @@ export function keyGen(args:IClientNewKey){
     const keyPath = getKeyPath(args.keyName)
     if(fs.existsSync(keyPath)){ 
       return `${args.keyName} key already exists.`;
-      
     }
     if(!args.curve){
       info.push('No curve specified. Set to p256 as default');

@@ -1,15 +1,20 @@
 import { ICryptoSuite } from "fabric-common";
+import {
+  LogLevelDesc,
+  Logger,
+  LoggerProvider,
+} from "@hyperledger/cactus-common";
 import { X509 } from 'jsrsasign';
-import { Logger } from 'winston';
 import { Identity, IdentityProvidersType, IdentityData, InternalIdentityProvider, User } from '../internal/identity-provider';
 import { Options, Util } from '../internal/util';
 import WebSocket, { WebSocketServer } from 'ws';
 import { Key } from '../internal/key'; 
 import { ECCurveType } from '../internal/crypto-util'
-import { WebSocketClient } from './client';
+import { WebSocketClient, newEcdsaVerify } from './client';
 import { InternalCryptoSuite } from '../internal/crypto-suite';
 import { Server } from "https";
 import { URLSearchParams } from "url";
+import { randomBytes } from 'crypto';
 
 export interface WSX509Identity extends Identity {
   type: IdentityProvidersType.WebSocket;
@@ -32,39 +37,33 @@ interface WSX509IdentityData extends IdentityData {
   mspId: string;
 }
 interface IClientWebSockets {
-   [key:string]: WebSocket; 
+  [key:string]: WebSocket;
+}
+interface IClientPubKeys {
+  [key:string]: string;
 }
 
-export interface WSX509ProviderOptions extends Options {
+export interface WSX509ProviderOptions {
+  logLevel: LogLevelDesc;
   server?:Server;
   port?:string;
 }
 
-export function waitForSocketClient(clients,pubKeyHex:string,host?:string): Promise<void> {
-  if(host){
-    console.log(`Waiting for web-socket connection to ${host} from client with pub key hex ${pubKeyHex.substring(0,12)}...`)}
-  return new Promise(function (resolve) {
-    setTimeout(function () {
-      if (clients[pubKeyHex]) {
-        console.log(`Web Socket Client established for pubKeyHex ${pubKeyHex.substring(0,12)}...`)
-        resolve();
-      } else {
-        waitForSocketClient(clients,pubKeyHex).then(resolve);
-      }
-    });
-  });
-}
-
 export class WSX509Provider extends InternalIdentityProvider {
   readonly type: string = IdentityProvidersType.WebSocket;
-  private readonly classLogger: Logger;
+  private readonly log: Logger;
+  public readonly className = "SecureIdentityProviders";
   readonly _wss: WebSocketServer;
   clients: IClientWebSockets;
-  //clientOn: boolean;
+  pubKeys: IClientPubKeys;
 
-  constructor(opts: WSX509ProviderOptions) {
+  constructor(private readonly opts: WSX509ProviderOptions) {
     super()
-    this.classLogger = Util.getClassLogger(opts.logLevel, 'WSX509Provider');
+    const fnTag = `${this.className}#constructor`;
+    this.log = LoggerProvider.getOrCreate({
+      level: opts.logLevel || "INFO",
+      label: this.className,
+    });
     if (!opts.server && Util.isEmptyString(opts.port)) {
       throw new Error('require an http server or port number');
     }
@@ -72,34 +71,50 @@ export class WSX509Provider extends InternalIdentityProvider {
       new WebSocketServer({ server: opts.server }) : 
       new WebSocketServer({ port: opts.port });
 
-    this.classLogger.debug(`Initiated web socket server for the identity provider at ${this._wss.url}`);
+    this.log.debug(`Initiated web socket server for the identity provider at ${this._wss.url}`);
     this.clients = {};
+    this.pubKeys = {};
+
     const self=this;
     this._wss.on('connection', function connection(ws,request) {
       const urlParams = new URLSearchParams(request.url.split('?')[1]);
-      self.classLogger.debug(`Url params sent by new web client: ${urlParams}`)
-      const pubKeyHex = urlParams.get('pubKeyHex')
+      self.log.debug(`Url params sent by new web client: ${urlParams}`)
+      const sessionId = urlParams.get('sessionId')
+      const signature = urlParams.get('signature')
       const curve = urlParams.get('crv') as ECCurveType;
-      if(!pubKeyHex){
-        throw new Error('no pubKeyHex provided by the web-socket url');
+      if(!sessionId){
+        throw new Error('no sessionId provided in the web-socket url');
+      }
+      if(!signature){
+        throw new Error('no signature provided in the web-socket url');
       }
       if(!curve){
-        throw new Error('no curve provided by the web-socket url');
+        throw new Error('no curve provided in the web-socket url');
         // TO-DO we can extract the curve data from the pubKeyHex? 
         // We should not need to pass the crv 
       }
-
-      self.clients[pubKeyHex] = new WebSocketClient({
-        pubKeyHex,
-        curve,
-        ws,
-        secWsKey: getSecWsKey(request),
-        logLevel: this.classLogger
-      });
+      const pubKeyHex = self.pubKeys[sessionId];
       ws.onclose = function () {
-        self.clients[pubKeyHex] = null;
-        console.log(`Client closed for pubKeyHex ${pubKeyHex.substring(0,12)}...`)
+        self.clients[sessionId] = null;
+        self.log.debug(`Client closed for pubKeyHex ${pubKeyHex.substring(0,12)}...`)
       };
+      
+      self.log.debug(`build ECDSA curve required by abstract class InternalIdentityClient`);
+      const pubKeyEcdsa = newEcdsaVerify(curve,pubKeyHex,sessionId,signature);
+
+      if(pubKeyEcdsa){
+        self.clients[pubKeyHex] = new WebSocketClient({
+          pubKeyHex,
+          curve,
+          ws,
+          pubKeyEcdsa,
+          logLevel: self.opts.logLevel
+        });
+      }else{
+        ws.close();
+        throw new Error('the signature provided byt he incoming webSocket connection does not match the public key');
+      }
+
     });
   }
 
@@ -109,8 +124,6 @@ export class WSX509Provider extends InternalIdentityProvider {
    * a websocket connection with the identity provider
    */
   async getUserContext(identity: WSX509Identity, name: string): Promise<User> {
-    const methodLogger = Util.getMethodLogger(this.classLogger, 'getUserContext');
-    methodLogger.debug(`get user context for ${name} with: = \n%o`, identity);
     if (identity === undefined) {
       throw new Error('require identity');
     } else if (Util.isEmptyString(name)) {
@@ -121,12 +134,13 @@ export class WSX509Provider extends InternalIdentityProvider {
     user.setCryptoSuite(new InternalCryptoSuite());
     //user.setCryptoSuite(Utils.newCryptoSuite());
     
-    // get type of curve
-    methodLogger.debug(`Get public key from provided identity crendential certificate`);
     const cert = new X509();
     cert.readCertPEM(identity.credentials.certificate); 
     const pubKeyHex = cert.getPublicKey()['pubKeyHex'];
-    await waitForSocketClient(this.clients,pubKeyHex,this._wss.address()['port'])
+
+    if(!this.clients[pubKeyHex]){
+      throw new Error(`no client connectected for public key ${pubKeyHex.substring(0,12).substring(0,12)}`);
+    }
     const wsKey = new Key(pubKeyHex.substring(0,12),this.clients[pubKeyHex]);
     await user.setEnrollment(
       wsKey,
@@ -134,6 +148,11 @@ export class WSX509Provider extends InternalIdentityProvider {
       identity.mspId
     );
     return user;
+  }
+  webSocketSessionId(pubKeyHex:string){
+    const sessionId = randomBytes(8).toString('hex');
+    this.pubKeys[sessionId] = pubKeyHex;
+    return sessionId;
   }
 
   getCryptoSuite(): ICryptoSuite {

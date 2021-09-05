@@ -77,10 +77,10 @@ export class WebSocketClient {
    * @description asynchronous request to get a new key and open new ws connection
    * @param args @type IClientNewKey 
    */
-  async getKey(args:IClientNewKey):Promise<void>{
+  async getKey(args:IClientNewKey,sessionId:string):Promise<void>{
     try{
       this.initKey(args);
-      await this.open()
+      await this.open(sessionId)
     }catch(error){
       throw new Error(`Error setting client's key : ${error}`); 
     }
@@ -89,12 +89,13 @@ export class WebSocketClient {
   /**
    * @description Closes existing and open new websocket connection for client
    */
-  async open():Promise<void>{
+  async open(sessionId:string):Promise<void>{
     const methodLogger = Util.getMethodLogger(this.classLogger, 'open')
     await this.close();
     try{
-      const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
-      const wsHostUrl = `${this.host}/?pubKeyHex=${pubKeyHex}&crv=${this.keyData.curve}`;
+      //const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
+      const signature = this.sign(Buffer.from(sessionId,'hex')).toString('hex')
+      const wsHostUrl = `${this.host}/?sessionId=${sessionId}&signature=${signature}&crv=${this.keyData.curve}`;
       methodLogger.debug(`Open new WebSocket to host: ${wsHostUrl}`);
       this.ws = new WebSocket(wsHostUrl);
       await waitForSocketState(this.ws, this.ws.OPEN);
@@ -115,7 +116,9 @@ export class WebSocketClient {
       self.ws = null;
     };
     this.ws.on('message', function incoming(message) {
-      self.sign(message)
+      const signature = self.sign(message)
+      methodLogger.debug(`Send signature to web socket server ${self.ws.url}`)
+      self.ws.send(signature);
     });
   }
   /**
@@ -133,7 +136,7 @@ export class WebSocketClient {
    * @param prehashed digest as Buffer
    * @returns signature as string
    */
-  sign(digest:Buffer):string{
+  sign(digest:Buffer):Buffer{
     const methodLogger = Util.getMethodLogger(this.classLogger, 'sign');
     const { prvKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.key); 
     methodLogger.debug(`Use ${ECCurveLong[this.keyData.curve]} to sign digest: ${digest.toString('hex').substring(0,6)}`)
@@ -142,10 +145,7 @@ export class WebSocketClient {
     const sig = ecdsa.sign(digest, signKey);
     let signature = Buffer.from(sig.toDER());
     methodLogger.debug(`Client signature: ${signature.toString('hex').substring(0,6)}`)
-
-    methodLogger.debug(`Send signature to web socket server ${this.ws.url}`)
-    this.ws.send(signature);
-    return signature.toString('hex');
+    return signature;
   };
   /**
    * @description send out pubKey

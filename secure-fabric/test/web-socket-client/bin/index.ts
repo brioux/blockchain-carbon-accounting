@@ -22,5 +22,5 @@ if(yargs.argv._[0] == null){
 }else if(yargs.argv._[0]=='get-pkh'){
     console.log(utils.getPubKeyHex(yargs.argv._[1]))
 }else if(yargs.argv._[0]=='connect'){
-    utils.getClient(yargs.argv._[1],{keyName: yargs.argv._[2], curve: yargs.argv._[3]})
+    utils.getClient(yargs.argv._[1],yargs.argv._[2],{keyName: yargs.argv._[3], curve: yargs.argv._[4]})
 }

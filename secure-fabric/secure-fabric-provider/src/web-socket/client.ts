@@ -7,11 +7,12 @@ import { InternalIdentityClient, ISignatureResponse } from "../internal/client";
 import { ECCurveLong, ECCurveType, CryptoUtil } from "../internal/crypto-util";
 import elliptic from 'elliptic';
 
+
 export interface WebSocketClientOptions { 
+  pubKeyHex: string;
   curve: ECCurveType;
   ws: WebSocket;
-  pubKeyHex: string;
-  secWsKey?:string;
+  pubKeyEcdsa: KJUR.crypto.ECDSA;
   logLevel?: LogLevelDesc;
 }
 
@@ -20,40 +21,7 @@ interface IDigestQueue{
   signature?:Buffer;
 } 
 
-/**
- * Forces a process to wait until the socket's `readyState` becomes the specified value.
- * @param socket The socket whose `readyState` is being watched
- * @param state The desired `readyState` for the socket
- */
-export function waitForSocketState(socket: WebSocket, state: number): Promise<void> {
-  return new Promise(function (resolve) {
-    setTimeout(function () {
-      if (socket.readyState === state) {
-        resolve();
-        //resolve(socket);
-      } else {
-        waitForSocketState(socket, state).then(resolve);
-      }
-    });
-  });
-}
 
-/**
- * @description : wait for digest in queue to be processed
- * @param index
- * @return signture as Buffer 
- */
-function inDigestQueue(client:WebSocketClient,index:number):Promise<Buffer> {
-  return new Promise(function (resolve) {
-    setTimeout(function () {
-      if (!client.processing) {
-        resolve(client.digestQueue[index].signature); 
-      } else {
-        inDigestQueue(client,index).then(resolve);
-      }
-    });
-  })
-}
 
 export class WebSocketClient implements InternalIdentityClient {
   public readonly className = "WebSocketClient";
@@ -61,12 +29,12 @@ export class WebSocketClient implements InternalIdentityClient {
   private readonly backend: WebSocket;
   private readonly curve: ECCurveType;
   private readonly secWsKey:string;
-  private readonly pubKeyEcdsa:any; //KJUR.crypto.ECDSA for csr requests;
-  private readonly pubKeyObj; // pubKey from elliptic node pacakge for verifying digest signatures
-  readonly pubKeyHex:string;
+  private readonly pubKeyEcdsa:KJUR.crypto.ECDSA; //KJUR.crypto.ECDSA for csr requests;
+  //private readonly pubKeyObj:; // pubKey from elliptic node pacakge for verifying digest signatures
+  private readonly pubKeyHex:string;
   // Array of Digests to queue signing requests in series
-  digestQueue:IDigestQueue[]
-  processing:boolean;
+  private digestQueue:IDigestQueue[]
+  private processing:boolean;
 
 
   constructor(opts: WebSocketClientOptions) {
@@ -74,22 +42,16 @@ export class WebSocketClient implements InternalIdentityClient {
       label: "WebSocketClient",
       level: opts.logLevel || "INFO",
     });
+    this.log.debug(`new web-socket client for publicKey ${opts.pubKeyHex.substring(0,6)}`);
+       
     this.backend = opts.ws;
     this.curve = opts.curve;
     this.pubKeyHex = opts.pubKeyHex;
-    this.secWsKey = opts.secWsKey;
+    this.pubKeyEcdsa = opts.pubKeyEcdsa;
     this.digestQueue = [];
-    this.log.debug(`New web-socket client for publicKey ${this.pubKeyHex.substring(0,6)}`);
-    
-    this.log.debug(`Build ECDSA curve required by abstract class InternalIdentityClient`);
-    this.pubKeyEcdsa = new KJUR.crypto.ECDSA({'curve': ECCurveLong[this.curve], 'pub': this.pubKeyHex});
-    //this.pubKeyEcdsa = KEYUTIL.getKey(this.pubKeyHex, null, "pkcs8pub")
-    
-    this.log.debug(`Initialize elliptic key used to verify incoming signatures`);
-    const EC = elliptic.ec;
-    const ecdsaCurve = elliptic.curves[this.curve];
-    const ec = new EC(ecdsaCurve);
-    this.pubKeyObj = ec.keyFromPublic(this.pubKeyHex, 'hex');
+ 
+    //this.log.debug(`initialize elliptic key used to verify incoming signatures`);
+    //this.pubKeyObj = opts.pubKeyObj
 
     const self = this;
     this.backend.on('message', function incoming(signature) {
@@ -121,7 +83,7 @@ export class WebSocketClient implements InternalIdentityClient {
 
     this.log.debug(`Wait for digest ${queueI} to be signed`);
     this.processing = true;
-    const raw = await inDigestQueue(this,queueI) 
+    const raw = await this.inDigestQueue(queueI) 
     const sig = CryptoUtil.encodeASN1Sig(raw,this.curve)
     return {sig, crv: this.curve}
   };
@@ -150,7 +112,7 @@ export class WebSocketClient implements InternalIdentityClient {
    * @description : signature is verified after processing by client and stored in digestQueue (serial processing)
    * @param index
    */
-  private verify(signature:Buffer) {
+  private verify(signature:Buffer):boolean {
     const fnTag = `${this.className}#verify`;
     // TO-DO if allowing parrallel signature processing
     // pull the queue index from the signature buf.
@@ -161,19 +123,51 @@ export class WebSocketClient implements InternalIdentityClient {
     this.digestQueue[queueI].signature = signature;
     this.processing = false;
     this.log.debug(`Signature to verify: ${signature.toString('hex').substring(0,6)}`)
-    const verified = this.pubKeyObj.verify(digest, signature)
+    const verified = this.pubKeyEcdsa.verifyHex(
+      digest.toString('hex'), signature.toString('hex'),this.pubKeyHex)
     if(!verified){
-      throw new Error('Signature does not match the public key. Closing the web socket connection');
-      this.close()
+      this.log.debug('signature does not match the public key. closing the web socket connection');
+      this.backend.close()
     }
+    return verified;
   }
-  /**
-   * @description : close the WebSocket
-   */
-  async close(){
-    this.backend.close();
-    await waitForSocketState(this.backend, this.backend.CLOSED); 
+/**
+ * @description : wait for digest in queue to be processed
+ * @param index
+ * @return signture as Buffer 
+ */
+  private inDigestQueue(index:number):Promise<Buffer> {
+    const client = this;
+    return new Promise(function (resolve) {
+      setTimeout(function () {
+        if (!client.processing) {
+          resolve(client.digestQueue[index].signature); 
+        } else {
+          client.inDigestQueue(index).then(resolve);
+        }
+      });
+    })
   }
 }
 
+export function newEcdsaVerify(
+  curve:string,
+  pubKeyHex:string,
+  digest:string,
+  signature:string) {
+  const ecdsa = new KJUR.crypto.ECDSA({'curve': ECCurveLong[curve], 'pub': pubKeyHex});
+  //this.pubKeyEcdsa = KEYUTIL.getKey(this.pubKeyHex, null, "pkcs8pub")
+  if(ecdsa.verifyHex(digest,signature,pubKeyHex)){
+    return ecdsa
+  };
+
+  /*
+  const ecdsaCurve = elliptic.curves[curve];
+  const ec = new elliptic.ec(ecdsaCurve);
+  const pubKeyObj = ec.keyFromPublic(pubKeyHex, 'hex');
+  if(pubKeyObj.verify(digest, signature)){
+    return pubKeyObj
+  }
+  */
+}
 

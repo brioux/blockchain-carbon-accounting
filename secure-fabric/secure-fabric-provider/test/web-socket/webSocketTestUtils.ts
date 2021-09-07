@@ -1,15 +1,18 @@
 import http, { Server } from "http";
 import { WebSocketClient } from "../../src/web-socket/client"
+import { InternalIdentityClient } from "../../src/internal/client";
 import WebSocket from 'ws';
 /**
  * Creates and starts a WebSocket server from a simple http server for testing purposes.
  * @param port Port for the server to listen on
  * @returns The created server
  */
-export function startServer(port: number): Promise<Server> {
+export function startServer(port): Promise<Server> {
   const server = http.createServer();
   return new Promise((resolve) => {
-    server.listen(port, () => resolve(server));
+    server.listen(port, () => {
+      resolve(server);
+    });
   });
 }
 
@@ -32,16 +35,17 @@ export function waitForSocketState(socket: WebSocket, state: number): Promise<vo
 }
 
 
-export function waitForSocketClient(clients,pubKeyHex:string,host?:string): Promise<void> {
-  if(host){
-    console.log(`Waiting for web-socket connection to ${host} from client with pub key hex ${pubKeyHex.substring(0,12)}...`)}
+export function waitForSocketClient(clients,sessionId:string,address?:any): Promise<WebSocketClient> {
+  if(address){
+    console.log(`Waiting for web-socket connection from client for ${sessionId}`)
+    console.log(address)}
   return new Promise(function (resolve) {
     setTimeout(function () {
-      if (clients[pubKeyHex]) {
-        console.log(`Web Socket Client established for pubKeyHex ${pubKeyHex.substring(0,12)}...`)
-        resolve();
+      if (typeof(clients[sessionId])=="object") {
+        console.log(`web-socket client established for sessionId ${sessionId}`)
+        resolve(clients[sessionId]);
       } else {
-        waitForSocketClient(clients,pubKeyHex).then(resolve);
+        waitForSocketClient(clients,sessionId).then(resolve);
       }
     });
   });

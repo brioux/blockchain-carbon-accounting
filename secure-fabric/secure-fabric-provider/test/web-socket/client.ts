@@ -1,4 +1,4 @@
-import { WebSocketClient, WebSocketClientOptions, IClientDigest, IClientCsrReq, } from '../../src/web-socket/client';
+import { WebSocketClient, WSClientOptions, IClientDigest, IClientCsrReq, } from '../../src/web-socket/client';
 import { getSecWsKey } from '../../src/web-socket/identity';
 import { expect } from 'chai';
 import { createHash } from 'crypto';
@@ -22,7 +22,7 @@ describe('web-socket/client', () => {
       fws = ws;
       secWsKey = getSecWsKey(request);
     });
-    const fwsClientOpts:WebSocketClientOptions = {
+    const fwsClientOpts:WSClientOptions = {
       host:`ws://localhost:${port}`,
       keyName: testP256, 
       curve:'p256',
@@ -47,7 +47,7 @@ describe('web-socket/client', () => {
       });
     });
     it('throw if pubKey is empty', () => {
-      const wskOpts:WebSocketClientOptions = {
+      const wskOpts:WSClientOptions = {
         ws:fws,
         secWsKey:secWsKey,
         pubKey:'', 
@@ -60,7 +60,7 @@ describe('web-socket/client', () => {
       }).to.throw('pubKey pem should not be empty');
     });
     /*it('throw if secWsKey is empty', () => {
-      const wskOpts:WebSocketClientOptions = {
+      const wskOpts:WSClientOptions = {
         ws:fws,
         secWsKey:'',
         pubKey:fwsClient.getPub(), 

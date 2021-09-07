@@ -50,6 +50,7 @@
     "jsrsasign": "^10.3.2",
     "node-vault": "^0.9.22",
     "request": "^2.88.2",
+    "socket.io": "^4.2.0",
     "winston": "^3.3.3"
   }
 }

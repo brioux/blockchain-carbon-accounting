@@ -16,8 +16,8 @@ function showHelp() {
 }
 
 async function getClient(host,sessionId,args:IClientNewKey) {                                                          
-    const wsClient = new WebSocketClient({host})
-    console.log(wsClient.initKey(args));
+    const wsClient = new WebSocketClient({host,keyName:args.keyName})
+    wsClient.getKey(args,sessionId);
     console.log(`Built client to connect to host: ${host}`)
     await wsClient.open(sessionId);
 }

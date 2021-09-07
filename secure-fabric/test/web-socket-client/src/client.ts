@@ -1,160 +1,171 @@
-import WebSocket from 'ws';
-import { Logger } from 'winston';
-import fs from 'fs'; 
-import elliptic from 'elliptic';
-import { Options, Util } from './util';
-import { keyGen, getKeyPath, getPubKeyHex, 
-  IClientNewKey, KeyData, 
-  ECCurveType, ECCurveLong } from './key';
-const jsrsasign = require('jsrsasign');
+import WebSocket from "ws";
+import fs from "fs";
+import elliptic from "elliptic";
+import {
+  keyGen,
+  getKeyPath,
+  IClientNewKey,
+  KeyData,
+  ECCurveType,
+} from "./key";
+import {
+  Logger,
+  Checks,
+  LogLevelDesc,
+  LoggerProvider,
+} from "@hyperledger/cactus-common";
 
-type IecdsaCurves = {
-  [key:string]:elliptic.ec; 
-};
-
-interface WSClientOtions {
-  host:string;
-  keyName?:string;
-  curve?:ECCurveType;
-  logLevel?:string; 
+interface WSClientOptions {
+  host: string;
+  keyName?: string;
+  curve?: ECCurveType;
+  logLevel?: LogLevelDesc;
 }
 
-
 export class WebSocketClient {
-  private readonly host;
+  public readonly className = "WebSocketClient";
+  private readonly log: Logger;
+  private readonly host: string;
+  private ecdsaCurves: IEcdsaCurves;
+  private keyName: string;
   private keyData: KeyData;
-  private ws: WebSocket;
-  private ecdsaCurves:IecdsaCurves;
-  private readonly classLogger: Logger;
-  keyName:string;
+  private ws?: WebSocket;
 
-  curve:ECCurveType;
-  constructor(opts:WSClientOtions){
-    if (Util.isEmptyString(opts.host)) {
-      throw new Error('require host address of web socket server');
-    }
-    opts.logLevel = opts.logLevel || 'error'
-    this.classLogger = Util.getClassLogger(opts.logLevel, 'WebSocketClient');
-    
+  constructor(opts: WSClientOptions) {
+    const fnTag = `${this.className}#constructor()`;
+    Checks.truthy(opts, `${fnTag} arg options`);
+    this.log = LoggerProvider.getOrCreate({
+      label: "WebSocketClient",
+      level: opts.logLevel || "INFO",
+    });
+    Checks.nonBlankString(opts.host, `${this.className}:opts.host`);
     this.host = opts.host;
-    opts.keyName = opts.keyName || 'default';
-
-    this.initKey({keyName: opts.keyName, curve: opts.curve})
-    this.classLogger.debug('Initialize supported ECDSA curves used by the sign method');
-    const EC = elliptic.ec;
-    this.ecdsaCurves={};
-    for (const value in ECCurveType) {
-      this.ecdsaCurves[value] = new EC(elliptic.curves[value]);
-    }
-  };
+    opts.keyName = opts.keyName || "default";
+    this.keyData = this.initKey({ keyName: opts.keyName, curve: opts.curve });
+  }
 
   /**
    * @description will generate a new EC private key, or get existing key it already exists
-   * @param args; 
+   * @param args;
    * @type IClientNewKey
    */
-  initKey(args:IClientNewKey):string{
-    const methodLogger = Util.getMethodLogger(this.classLogger, 'initKey')
-    methodLogger.debug(`Look for key with name '${args.keyName}' or generate new key`);
-    let info=[];
-  
-    const keyPath = getKeyPath(args.keyName)
-    if(!fs.existsSync(keyPath)){ 
-      info.push(keyGen(args))
+  private initKey(args: IClientNewKey): KeyData {
+    const fnTag = `${this.className}#initKey`;
+    this.log.debug(
+      `${fnTag} look for key with name '${args.keyName}' or generate new key`,
+    );
+    const info = [];
+    const keyPath = getKeyPath(args.keyName);
+    if (!fs.existsSync(keyPath)) {
+      info.push(keyGen(args));
     }
-    info.push(`Extracting key '${args.keyName}' from key store`)
+    info.push(`extracting key '${args.keyName}' from key store`);
     this.keyName = args.keyName;
-    this.keyData = JSON.parse(fs.readFileSync(keyPath,'utf8'));
-    if(args.curve && this.keyData.curve !== args.curve){
-      info.push(`The requested curve type (${args.curve}) is different than the existing key: ${this.keyData.curve}`)
+    const keyData = JSON.parse(fs.readFileSync(keyPath, "utf8"));
+    const curve = keyData.curve;
+    if (args.curve && curve !== args.curve) {
+      info.push(
+        `the requested curve type (${args.curve}) is different than the existing key: ${curve}`,
+      );
     }
-    const result = info.join('\n')
-    methodLogger.debug(result);
-    return result;
-  };
+    const result = info.join("\n");
+    this.log.debug(`${fnTag} ${result}`);
+    return keyData;
+  }
 
   /**
    * @description asynchronous request to get a new key and open new ws connection
-   * @param args @type IClientNewKey 
+   * @param args @type IClientNewKey
    */
-  async getKey(args:IClientNewKey,sessionId:string):Promise<void>{
-    try{
-      this.initKey(args);
-      await this.open(sessionId)
-    }catch(error){
-      throw new Error(`Error setting client's key : ${error}`); 
+  async getKey(args: IClientNewKey, sessionId: string): Promise<void> {
+    try {
+      this.keyData = this.initKey(args);
+      await this.open(sessionId);
+    } catch (error) {
+      throw new Error(`Error setting client's key : ${error}`);
     }
   }
 
   /**
    * @description Closes existing and open new websocket connection for client
    */
-  async open(sessionId:string):Promise<void>{
-    const methodLogger = Util.getMethodLogger(this.classLogger, 'open')
+  async open(sessionId: string): Promise<void> {
+    const fnTag = `${this.className}#open`;
     await this.close();
-    try{
+    try {
       //const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
-      const signature = this.sign(Buffer.from(sessionId,'hex')).toString('hex')
-      const wsHostUrl = `${this.host}/?sessionId=${sessionId}&signature=${signature}&crv=${this.keyData.curve}`;
-      methodLogger.debug(`Open new WebSocket to host: ${wsHostUrl}`);
+      const signature = sign(Buffer.from(sessionId, "hex"),this.keyData).toString(
+        "hex",
+      );
+      const wsHostUrl = `${this.host}?sessionId=${sessionId}&signature=${signature}&crv=${this.keyData.curve}`;
+      this.log.debug(`${fnTag} Open new WebSocket to host: ${wsHostUrl}`);
       this.ws = new WebSocket(wsHostUrl);
-      await waitForSocketState(this.ws, this.ws.OPEN);
-    }catch(error){
-      throw new Error(`Error creating web-socket connection to host ${this.host}: ${error}`);
+      //await waitForSocketState(this.ws, this.ws.OPEN);
+    } catch (error) {
+      throw new Error(
+        `Error creating web-socket connection to host ${this.host}: ${error}`,
+      );
     }
 
-    
     this.ws.onerror = function () {
       //throw new Error('require port for web socket');
     };
     this.ws.onopen = function () {
-      console.log('WebSocket connection established');
+      console.log("WebSocket connection established");
     };
-    const self = this;
+    const { host, keyName, ws, log, keyData } = this;
     this.ws.onclose = function incoming() {
-      console.log(`Web socket connection to ${self.host} closed for key ${self.keyName}`)
-      self.ws = null;
+      console.log(`Web socket connection to ${host} closed for key ${keyName}`);
     };
-    this.ws.on('message', function incoming(message) {
-      const signature = self.sign(message)
-      methodLogger.debug(`Send signature to web socket server ${self.ws.url}`)
-      self.ws.send(signature);
+    this.ws.on("message", function incoming(message: Buffer) {
+      const signature = sign(message,keyData);
+      log.debug(`Send signature to web socket server ${ws.url}`);
+      ws.send(signature);
     });
   }
   /**
    * @description : close the WebSocket
    */
-  async close():Promise<void>{
-    if(this.ws){
+  async close(): Promise<void> {
+    if (this.ws) {
       this.ws.close();
-      await waitForSocketState(this.ws, this.ws.CLOSED); 
+      //await waitForSocketState(this.ws, this.ws.CLOSED);
     }
   }
-
-  /**
-   * @description generate 
-   * @param prehashed digest as Buffer
-   * @returns signature as string
-   */
-  sign(digest:Buffer):Buffer{
-    const methodLogger = Util.getMethodLogger(this.classLogger, 'sign');
-    const { prvKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.key); 
-    methodLogger.debug(`Use ${ECCurveLong[this.keyData.curve]} to sign digest: ${digest.toString('hex').substring(0,6)}`)
-    const ecdsa = this.ecdsaCurves[this.keyData.curve];
-    const signKey = ecdsa.keyFromPrivate(prvKeyHex, 'hex');
-    const sig = ecdsa.sign(digest, signKey);
-    let signature = Buffer.from(sig.toDER());
-    methodLogger.debug(`Client signature: ${signature.toString('hex').substring(0,6)}`)
-    return signature;
-  };
   /**
    * @description send out pubKey
    * @return pubKey pem file
    */
-  getPubKeyHex(){
+  getPubKeyHex() {
     const { pubKeyHex } = jsrsasign.KEYUTIL.getKey(this.keyData.pubKey);
-    return pubKeyHex
+    return pubKeyHex;
   }
+}
+
+const jsrsasign = require("jsrsasign");
+type IEcdsaCurves = {
+  [key: string]: elliptic.ec;
+};
+const EC = elliptic.ec;
+const ecdsaCurves = {};
+for (const value in ECCurveType) {
+  //const curve = elliptic.curves[value];
+  ecdsaCurves[value] = new EC(value);
+}
+
+/**
+ * @description generate
+ * @param prehashed digest as Buffer
+ * @returns signature as string
+ */
+function sign(digest: Buffer, keyData: KeyData): Buffer {
+  //const fnTag = `${this.className}#sign`;
+  const { prvKeyHex } = jsrsasign.KEYUTIL.getKey(keyData.key);
+  const ecdsa = ecdsaCurves[keyData.curve];
+  const signKey = ecdsa.keyFromPrivate(prvKeyHex, "hex");
+  const sig = ecdsa.sign(digest, signKey);
+  const signature = Buffer.from(sig.toDER());
+  return signature;
 }
 
 /**
@@ -162,8 +173,11 @@ export class WebSocketClient {
  * @param socket The socket whose `readyState` is being watched
  * @param state The desired `readyState` for the socket
  */
-export function waitForSocketState(socket: WebSocket, state: number): Promise<void> {
-  return new Promise(function (resolve,reject) {
+export function waitForSocketState(
+  socket: WebSocket,
+  state: number,
+): Promise<void> {
+  return new Promise(function (resolve, reject) {
     try {
       setTimeout(function () {
         if (socket.readyState === state) {
@@ -173,9 +187,8 @@ export function waitForSocketState(socket: WebSocket, state: number): Promise<vo
           waitForSocketState(socket, state).then(resolve);
         }
       });
-    } catch(err){
-      reject(`Error wating for socket state ${state}: ${err} `)
+    } catch (err) {
+      reject(`Error wating for socket state ${state}: ${err} `);
     }
   });
 }
-

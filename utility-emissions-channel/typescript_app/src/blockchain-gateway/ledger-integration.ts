@@ -166,7 +166,7 @@ export default class LedgerIntegration{
                 abi: this.ledgerConfig.netEmissionTokenContract.contractInfo.abi,
                 networks
             };
-            await this.keychainPlugin.set(contractName,json);
+            await this.keychainPlugin.set(contractName,JSON.stringify(json));
         }
     }
 }

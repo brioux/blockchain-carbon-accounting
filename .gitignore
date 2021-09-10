@@ -54,6 +54,7 @@ utility-emissions-channel/typescript_app/node_modules
 utility-emissions-channel/typescript_app/local-bucket
 utility-emissions-channel/typescript_app/playground
 utility-emissions-channel/typescript_app/.env.*
+utility-emissions-channel/typescript_app/**/*.hcl
 #  b. chaincode
 utility-emissions-channel/chaincode/packaging/code.tar.gz
 utility-emissions-channel/chaincode/packaging/marbles-chaincode.tgz

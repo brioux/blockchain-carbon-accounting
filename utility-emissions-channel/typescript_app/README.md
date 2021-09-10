@@ -65,3 +65,26 @@ In order to use endpoint after starting the server, firstly Enroll Registrar the
 - [X] POST /api/v1/utilityemissionchannel/emissions : record emission on fabric
 - [X] GET  /api/v1/utilityemissionchannel/emissions/:userId/:orgName/:uuid : get emission record with id = uuid
 - [X] GET  /api/v1/utilityemissionchannel/allEmissions/:userId/:orgName/:utilityId/:partyId : get emission records with given utilityId and partyId
+
+### Identity Management
+
+For managing identity of client, this project uses HashiCorp's Vault. Each client of a organizations are represented as a entity in vault having following capabilities:
+
+- Client can only uses his/her transit key.
+- Client can uses a dedicated key-secret vault path to store secret.
+
+NOTE : No client can access other client transit key and kv path.
+
+**Getting Started**
+
+Before starting the application, organization operator will have to setup a vault server, having following :
+
+- Manager Policy : Policy required for manager of the identities, Job of a manager will be to create new client. 
+- Client Template Policy : Policy for giving restricted access to client.
+- Userpass Auth Enabled : Username and password based credentials is used for authentication of clients/manager.
+- Transit Secret Path : for storing keys of each clients.
+- Key-Value secret Path : for storing secrets of clients.
+
+For Development vault server can be started using `npm run vault:setup`. [NOTE : THIS IS JUST FOR TESTING AND DEVELOPMENT , FOR PRODUCTION PLEASE SEE VAULT DEPLOYMENT GUIDE : https://learn.hashicorp.com/tutorials/vault/deployment-guide]. 
+
+Use `npm run vault:policy <transitPath> <secretPath> <userpassPath>` for generating both `client-tmpl.hcl` and `manager.hcl` for your Vault deployment.

@@ -1,7 +1,10 @@
 // fabricRegistry.ts : interact with fabric-ca to enroll
 // and register user
 import { Logger, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common';
-import { FabricSigningCredentialType, PluginLedgerConnectorFabric } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+import {
+    FabricSigningCredentialType,
+    PluginLedgerConnectorFabric,
+} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
 import { IEnrollRegistrarRequest, IEnrollRegistrarResponse } from './I-fabricRegistry';
 import { PluginKeychainVault } from '@hyperledger/cactus-plugin-keychain-vault';
 
@@ -17,13 +20,6 @@ export interface IFabricRegistryOptions {
     keychain: PluginKeychainVault;
     adminUsername: string;
     adminPassword: string;
-}
-
-interface IX509Cert {
-    type: string; // X509
-    mspId: string;
-    certificate: string;
-    privateKey: string;
 }
 
 export class FabricRegistry {
@@ -46,7 +42,9 @@ export class FabricRegistry {
         const fnTag = '#enrollRegistrar';
         try {
             if (await this.opts.keychain.has(`${req.orgName}_${this.opts.adminUsername}`)) {
-                throw new Error(`${this.opts.adminUsername} of organizations ${req.orgName} is already enrolled`);
+                throw new Error(
+                    `${this.opts.adminUsername} of organizations ${req.orgName} is already enrolled`,
+                );
             }
             const refCA = this.opts.orgCAs[req.orgName];
             this.log.debug(`${fnTag} enroll ${req.orgName}'s registrar with ${refCA.ca}`);
@@ -64,7 +62,7 @@ export class FabricRegistry {
                     mspId: refCA.mspId,
                 },
             );
-            this.log.debug(`${fnTag} ${req.orgName}'s registrar successfully enrolled`)
+            this.log.debug(`${fnTag} ${req.orgName}'s registrar successfully enrolled`);
             return {
                 orgName: req.orgName,
                 msp: refCA.mspId,
@@ -76,7 +74,7 @@ export class FabricRegistry {
         }
     }
 
-    async enrollUser(userId: string, orgName: string, affiliation: string) {
+    async enrollUser(userId: string, orgName: string, affiliation: string): Promise<void> {
         const fnTag = '#enrollUser';
         try {
             if (await this.opts.keychain.has(`${orgName}_${userId}`)) {

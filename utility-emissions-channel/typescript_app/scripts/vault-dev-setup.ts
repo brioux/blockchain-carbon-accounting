@@ -15,7 +15,7 @@ const devVaultEndpoint = 'http://localhost:8200';
 // enable userpass auth
 // mountSecretPath
 // mount transit path
-const backend = Vault({
+let backend = Vault({
     endpoint: devVaultEndpoint,
     apiVersion: 'v1',
     token: devToken,
@@ -26,7 +26,7 @@ async function createPolicy(file: string, name: string): Promise<void> {
     await backend.write('sys/policy/' + name, { policy: policy });
 }
 
-async function mountSecret(path: string, type: 'transit' | 'kv'): Promise<void> {
+async function mountSecret(path: string, type: 'transit' | 'kv-v2'): Promise<void> {
     await backend.write('sys/mounts/' + path, { type: type });
 }
 
@@ -36,6 +36,9 @@ async function enableAuth(path: string, type: 'userpass') {
 
 async function updateEnv(): Promise<void> {
     const resp = await backend.read('sys/auth');
+    while (!resp.data[userpassPath + '/']) {
+        await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
     const accessor = resp.data[userpassPath + '/'].accessor;
     const envPath = join(__dirname, '..', '.env');
     const envs = readFileSync(envPath, 'utf-8').split(EOL);
@@ -54,7 +57,7 @@ async function updateEnv(): Promise<void> {
             createPolicy('./manager.hcl', managerPolicyName),
             createPolicy('./client-tmpl.hcl', clientPolicyName),
             mountSecret(transitPath, 'transit'),
-            mountSecret(secretPath, 'kv'),
+            mountSecret(secretPath, 'kv-v2'),
             enableAuth(userpassPath, 'userpass'),
             updateEnv(),
         ]);

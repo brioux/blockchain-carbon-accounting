@@ -15,7 +15,7 @@ const devVaultEndpoint = 'http://localhost:8200';
 // enable userpass auth
 // mountSecretPath
 // mount transit path
-let backend = Vault({
+const backend = Vault({
     endpoint: devVaultEndpoint,
     apiVersion: 'v1',
     token: devToken,

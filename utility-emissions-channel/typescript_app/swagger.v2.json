@@ -1,16 +1,24 @@
 {
     "openapi": "3.0.0",
     "info": {
-        "title": "Identity Manager Using Vault",
-        "description": "Provide a identity manager to this application.Rather then writing a custom identity management logic this application uses vault server\nEach Client is represented as entity in vault with capabilities to \n1.Manage one transit key\n2.Store secrets",
-        "version": "1.0.0"
+        "title": "Carbon Accounting",
+        "description": "REST-API for connecting to Carbon Accounting network of Hyperledger CA2 SIG.",
+        "version": "2.0.0"
     },
     "servers": [
         {
-            "url": "http://localhost:9000/api/v1/im"
+            "url": "http://localhost:9000/api/v2"
         }
     ],
     "tags": [
+        {
+            "name": "Emissions Contract",
+            "description": "API for making request to Emissions contract"
+        },
+        {
+            "name": "Register/Enroll",
+            "description": "API for registering and enrolling clients/registrar"
+        },
         {
             "name" : "Identity"
         },
@@ -87,11 +95,79 @@
                         }
                     }
                 }
+            },
+            "registerReq" : {
+                "type": "object",
+                "required": ["enrollmentID","affiliation"],
+                "properties": {
+                    "enrollmentID" : {
+                        "type": "string",
+                        "example": "client1"
+                    },
+                    "role" : {
+                        "type": "string",
+                        "example" : "client"
+                    },
+                    "affiliation" :{
+                        "type": "string",
+                        "example" : "auditor1.department1"
+                    },
+                    "maxEnrollments" : {
+                        "type": "number",
+                        "default" : -1
+                    },
+                    "attrs" :{
+                        "type": "array",
+                        "items" : {
+                            "type": "object",
+                            "required": ["name","value"],
+                            "properties": {
+                                "name" : {
+                                    "type" : "string"
+                                },
+                                "value" : {
+                                    "type" : "string"
+                                },
+                                "ecert" : {
+                                    "type": "boolean"
+                                }
+                            }
+                        },
+                        "example": []
+                    }
+                }
+            },
+            "registerRes" : {
+                "type": "object",
+                "required": ["enrollmentID","enrollmentSecret"],
+                "properties": {
+                    "enrollmentID" : {
+                        "type": "string"
+                    },
+                    "enrollmentSecret" : {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "parameters": {
+            "identityCallerType" : {
+                "name": "callerType",
+                "in": "query",
+                "required": true,
+                "schema" :{
+                    "type": "string",
+                    "default" : "X.509",
+                    "enum": [
+                        "X.509",
+                        "Vault-X.509"
+                    ]
+                }
             }
         }
     },
     "paths": {
-        "/identity" : {
+        "/im/identity" : {
             "post" : {
                 "tags": ["Identity"],
                 "description": "Creates a new client/manager Identity",
@@ -156,7 +232,7 @@
                 }
             }
         },
-        "/token" : {
+        "/im/token" : {
             "post" : {
                 "tags": ["Token"],
                 "description": "Generate new Token using vault credentials",
@@ -239,7 +315,7 @@
                 }
             }
         },
-        "/secrets" : {
+        "/im/secrets" : {
             "get" : {
                 "tags": ["Secrets"],
                 "description": "Return All The secrets stored by a client",
@@ -258,7 +334,62 @@
                 }
             }
         },
-        "/key":{
+        "/im/fabric" : {
+            "post" : {
+                "description": "Set Fabric related secrets for client",
+                "summary": "Set Fabric related secrets for client",
+                "tags": ["Secrets"],
+                "parameters": [
+                    {
+                        "name": "enrollmentSecret",
+                        "in": "header",
+                        "required": false,
+                        "description": "set enrollmentSecret for enrolling",
+                        "schema" : {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Fabric Secrets Updated"
+                    }
+                }
+            }
+        },
+        "/im/eth" : {
+            "post" : {
+                "description": "Set Ethereum related secrets for client",
+                "summary": "Set Ethereum related secrets for client",
+                "tags": ["Secrets"],
+                "parameters": [
+                    {
+                        "name": "address",
+                        "in": "header",
+                        "required": false,
+                        "description": "hex encoded ethereum address",
+                        "schema" : {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "private",
+                        "in": "header",
+                        "required": false,
+                        "description": "hex encoded ethereum private key",
+                        "schema" : {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Ethereum Secrets Updated"
+                    }
+                }
+            }
+        },
+        "/im/key":{
             "post" : {
                 "description": "Create a Transit Key",
                 "summary" : "Create a Transit Key",
@@ -281,6 +412,65 @@
                 "responses": {
                     "201" : {
                         "description": "EC Transit Key Created"
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/registerEnroll/enroll" : {
+            "post" : {
+                "description": "Enrolls a client with fabric ca",
+                "summary": "Enrolls a client with fabric ca",
+                "tags": ["Register/Enroll"],
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    },
+                    {
+                        "name": "enrollmentSecret",
+                        "in": "header",
+                        "required": false,
+                        "description": "secret for enrolling with fabric ca, required when enrollmentSecret is not stored as secret in vault",
+                        "schema" : {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Client Enrolled"
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/registerEnroll/register" : {
+            "post" : {
+                "tags": ["Register/Enroll"],
+                "description": "Register a client with fabric ca",
+                "summary": "Register a client with fabric ca",
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    }
+                ],
+                "requestBody":{
+                    "content": {
+                        "application/json" : {
+                            "schema":{
+                                "$ref" : "#/components/schemas/registerReq"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201" : {
+                        "description": "Client Registered",
+                        "content": {
+                            "application/json":{
+                                "schema" : {
+                                    "$ref" : "#/components/schemas/registerRes"
+                                }
+                            }
+                        }
                     }
                 }
             }

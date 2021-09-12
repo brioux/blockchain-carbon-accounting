@@ -439,7 +439,7 @@
                 }
             }
         },
-        "/im/fabric" : {
+        "/im/secrets/fabric" : {
             "post" : {
                 "description": "Set Fabric related secrets for client",
                 "summary": "Set Fabric related secrets for client",
@@ -462,7 +462,7 @@
                 }
             }
         },
-        "/im/eth" : {
+        "/im/secrets/eth" : {
             "post" : {
                 "description": "Set Ethereum related secrets for client",
                 "summary": "Set Ethereum related secrets for client",
@@ -614,6 +614,31 @@
                 "parameters": [
                     {
                         "$ref" : "#/components/parameters/identityCallerType"
+                    },
+                    {
+                        "name": "ethAddress",
+                        "in": "header",
+                        "required": false,
+                        "description": "hex address of ethereum to be used for minting emissions token, require if not stored in vault secret",
+                        "schema":{
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "ethPrivate",
+                        "in": "header",
+                        "required": false,
+                        "description": "hex private key to be used for minting emissions, require if not stored in vault secret",
+                        "schema":{
+                            "type": "string"
+                        }
+                    },{
+                        "name": "automaticRetireDate",
+                        "in": "query",
+                        "required": false,
+                        "schema":{
+                            "type": "string"
+                        }
                     }
                 ],
                 "requestBody" : {

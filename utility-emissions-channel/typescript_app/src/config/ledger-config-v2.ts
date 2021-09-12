@@ -9,11 +9,13 @@ import { PluginKeychainMemory } from '@hyperledger/cactus-plugin-keychain-memory
 import { Checks, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common';
 import { v4 as uuid4 } from 'uuid';
 import { PluginKeychainVault } from '@hyperledger/cactus-plugin-keychain-vault';
+import { PluginLedgerConnectorXdai } from '@hyperledger/cactus-plugin-ledger-connector-xdai';
 import { PluginRegistry } from '@hyperledger/cactus-core';
 import { readFileSync } from 'fs';
 import AWSS3 from '../blockchain-gateway/utils/aws';
 export class LedgerConfig {
     fabricConnector: PluginLedgerConnectorFabric;
+    ethConnector: PluginLedgerConnectorXdai;
     inMemoryKeychain: IPluginKeychain;
     certStoreKeychain: IPluginKeychain;
     pluginRegistry: PluginRegistry;
@@ -103,6 +105,18 @@ export class LedgerConfig {
                 opts.connectionProfile = JSON.parse(readFileSync(ccpPath).toString('utf8'));
             }
             this.fabricConnector = new PluginLedgerConnectorFabric(opts);
+        }
+
+        {
+            // eth connector
+            const endpoint = process.env.LEDGER_ETH_JSON_RPC_URL;
+            Checks.nonBlankString(endpoint, `${fnTag} LEDGER_ETH_JSON_RPC_URL`);
+            this.ethConnector = new PluginLedgerConnectorXdai({
+                rpcApiHttpHost: endpoint,
+                logLevel: logLevel,
+                instanceId: uuid4(),
+                pluginRegistry: this.pluginRegistry,
+            });
         }
     }
 }

@@ -70,6 +70,23 @@ export class IdentityRouter {
         );
 
         this.router.post(
+            '/secrets/eth',
+            [
+                header('Authorization').isString().notEmpty().contains('Bearer '),
+                header('address').isHexadecimal(),
+                header('private').isHexadecimal(),
+            ],
+            this.setEthSecret.bind(this),
+        );
+        this.router.post(
+            '/secrets/fabric',
+            [
+                header('Authorization').isString().notEmpty().contains('Bearer '),
+                header('enrollmentSecret').isString(),
+            ],
+            this.setFabricSecret.bind(this),
+        );
+        this.router.post(
             '/key',
             [
                 header('Authorization').isString().notEmpty().contains('Bearer '),
@@ -245,7 +262,7 @@ export class IdentityRouter {
         }
         const token = req.header('Authorization').split('Bearer ')[1];
         try {
-            await this.opts.backend.renewToken(token);
+            await this.opts.backend.revokeToken(token);
             return res.status(204).send();
         } catch (error) {
             this.log.debug(`${fnTag} failed to get token details: ${error.message}`);
@@ -279,7 +296,10 @@ export class IdentityRouter {
         }
         this.log.debug(`${fnTag} fetching ${username}'s secrets`);
         try {
-            const secrets = await this.opts.backend.getKVSecret(token, username);
+            let secrets: { [key: string]: string } = {};
+            try {
+                secrets = await this.opts.backend.getKVSecret(token, username);
+            } catch (e) {}
             const out: { key: string; value: string }[] = [];
             for (const secret in secrets) {
                 out.push({ key: secret, value: secrets[secret] });
@@ -293,6 +313,84 @@ export class IdentityRouter {
         }
     }
 
+    private async setFabricSecret(req: Request, res: Response) {
+        const fnTag = `${req.method.toUpperCase()} ${req.originalUrl}`;
+        this.log.info(fnTag);
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            this.log.debug(`${fnTag} bad request : ${JSON.stringify(errors.array())}`);
+            return res.status(412).json({
+                msg: errors.array(),
+            });
+        }
+        const token = req.header('Authorization').split('Bearer ')[1];
+        this.log.debug(`${fnTag} fetching token details`);
+        let username: string;
+        try {
+            const cred = await this.opts.backend.tokenDetails(token);
+            username = cred.username;
+        } catch (error) {
+            this.log.debug(`${fnTag} failed to fetch token details: ${error.message}`);
+            return res.status(403).json({
+                msg: (error as Error).message,
+            });
+        }
+
+        this.log.debug(`${fnTag} setting fabric secret for ${username}`);
+        try {
+            let secrets: { [key: string]: string } = {};
+            try {
+                secrets = await this.opts.backend.getKVSecret(token, username);
+            } catch (e) {}
+            secrets['ENROLLMENT_SECRET'] = req.header('enrollmentSecret');
+            await this.opts.backend.setKVSecret(token, username, secrets);
+
+            return res.sendStatus(200);
+        } catch (error) {
+            this.log.debug(`${fnTag} failed to set fabric secret: ${error.message}`);
+            return res.status(409).json({
+                msg: (error as Error).message,
+            });
+        }
+    }
+    private async setEthSecret(req: Request, res: Response) {
+        const fnTag = `${req.method.toUpperCase()} ${req.originalUrl}`;
+        this.log.info(fnTag);
+        const errors = validationResult(req);
+        if (!errors.isEmpty()) {
+            this.log.debug(`${fnTag} bad request : ${JSON.stringify(errors.array())}`);
+            return res.status(412).json({
+                msg: errors.array(),
+            });
+        }
+        const token = req.header('Authorization').split('Bearer ')[1];
+        this.log.debug(`${fnTag} fetching token details`);
+        let username: string;
+        try {
+            const cred = await this.opts.backend.tokenDetails(token);
+            username = cred.username;
+        } catch (error) {
+            this.log.debug(`${fnTag} failed to fetch token details: ${error.message}`);
+            return res.status(403).json({
+                msg: (error as Error).message,
+            });
+        }
+        this.log.debug(`${fnTag} setting eth secret for ${username}`);
+        try {
+            const secrets = await this.opts.backend.getKVSecret(token, username);
+            secrets['ETHEREUM_KEY'] = JSON.stringify({
+                address: req.header('address'),
+                private: req.header('private'),
+            });
+            await this.opts.backend.setKVSecret(token, username, secrets);
+            return res.sendStatus(200);
+        } catch (error) {
+            this.log.debug(`${fnTag} failed to set eth secret: ${error.message}`);
+            return res.status(409).json({
+                msg: (error as Error).message,
+            });
+        }
+    }
     private async newTransitKey(req: Request, res: Response) {
         const fnTag = `${req.method.toUpperCase()} ${req.originalUrl}`;
         this.log.info(fnTag);

@@ -35,9 +35,10 @@ async function enableAuth(path: string, type: 'userpass') {
 }
 
 async function updateEnv(): Promise<void> {
-    const resp = await backend.read('sys/auth');
+    let resp = await backend.read('sys/auth');
     while (!resp.data[userpassPath + '/']) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
+        resp = await backend.read('sys/auth');
     }
     const accessor = resp.data[userpassPath + '/'].accessor;
     const envPath = join(__dirname, '..', '.env');

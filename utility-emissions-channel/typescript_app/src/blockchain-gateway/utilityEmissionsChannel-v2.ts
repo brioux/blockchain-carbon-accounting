@@ -6,7 +6,11 @@ import {
     PluginLedgerConnectorFabric,
 } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
 import { checkDateConflict } from './utils/dateUtils';
-import { ICaller, IEmissionRecord } from './I-utilityEmissionsChannel';
+import {
+    ICaller,
+    IEmissionRecord,
+    IUpdateEmissionsMintedTokenRequest,
+} from './I-utilityEmissionsChannel';
 import AWSS3 from './utils/aws';
 import { createHash } from 'crypto';
 
@@ -169,7 +173,7 @@ export class UtilityEmissionsChannelV2 {
         caller: ICaller,
         input: { fromDate: string; thruDate: string },
     ): Promise<IEmissionRecord[]> {
-        const fnTag = `${this.className}#getAllEmissionRecords`;
+        const fnTag = `${this.className}#getAllEmissionsDataByDateRange`;
         const signer = this.__signer(fnTag, caller);
         this.log.debug(`${fnTag} query ${this.ccName} chaincode installed on ${this.channelName}`);
         let records: { key: string; Record: IEmissionRecord }[];
@@ -196,6 +200,28 @@ export class UtilityEmissionsChannelV2 {
             out.push(record.Record);
         }
         return out;
+    }
+
+    async updateEmissionsMintedToken(
+        caller: ICaller,
+        input: IUpdateEmissionsMintedTokenRequest,
+    ): Promise<void> {
+        const fnTag = `${this.className}#updateEmissionsMintedToken`;
+        const signer = this.__signer(fnTag, caller);
+        this.log.debug(`${fnTag} query ${this.ccName} chaincode installed on ${this.channelName}`);
+        try {
+            await this.opts.fabricConnector.transact({
+                signingCredential: signer,
+                channelName: this.channelName,
+                contractName: this.ccName,
+                methodName: 'updateEmissionsMintedToken',
+                invocationType: FabricContractInvocationType.Send,
+                params: [input.tokenId, input.partyId, ...input.uuids],
+            });
+        } catch (error) {
+            this.log.error(`${fnTag} failed to query chaincode : %o`, error);
+            throw error;
+        }
     }
     private __signer(fnTag: string, caller: ICaller): FabricSigningCredential {
         this.log.debug(`${fnTag} caller = ${caller.username} , type = ${caller.type}`);

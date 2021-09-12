@@ -15,3 +15,9 @@ export interface IIssueRequest {
 export interface IIssueResponse {
     tokenId: string;
 }
+
+export interface IEthCaller {
+    key?: { address: string; private: string };
+    token?: string;
+    username: string;
+}

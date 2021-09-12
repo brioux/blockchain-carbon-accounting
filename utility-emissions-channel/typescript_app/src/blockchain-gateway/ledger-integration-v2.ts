@@ -6,6 +6,8 @@ import { Request, Response } from 'express';
 import { FabricRegistryV2 } from './fabricRegistry-v2';
 import { LedgerConfig } from '../config/ledger-config-v2';
 import { Checks } from '@hyperledger/cactus-common';
+import { UtilityEmissionsChannelV2 } from './utilityEmissionsChannel-v2';
+import { UtilityEmissionsChannelRouterV2 } from '../routers/utilityEmissionsChannel-v2';
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
     constructor(readonly app: Express) {
@@ -65,6 +67,23 @@ export class LedgerIntegrationV2 {
                 auth,
                 fabricRegistryRouter.router,
             );
+        }
+
+        {
+            // utility emissions routers
+            const utilityEmissionsChannel = new UtilityEmissionsChannelV2({
+                logLevel: logLevel,
+                fabricConnector: ledgerConfig.fabricConnector,
+                certStoredKeycahinId: ledgerConfig.certStoreKeychain.getKeychainId(),
+                dataStorage: ledgerConfig.awss3,
+                orgName: process.env.LEDGER_FABRIC_ORG_MSP,
+            });
+
+            const router = new UtilityEmissionsChannelRouterV2({
+                logLevel: logLevel,
+                utilityEmissionsChannel: utilityEmissionsChannel,
+            });
+            app.use('/api/v2/utilityemissionchannel/emissionscontract', auth, router.router);
         }
     }
 }

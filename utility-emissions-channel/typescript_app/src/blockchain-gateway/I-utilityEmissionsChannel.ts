@@ -1,6 +1,8 @@
 // I-utilityEmissionsChannel.ts : defines interface of request and response to/from
 // utilityEmissionsChannel chaincode
 
+import { FabricSigningCredentialType } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+
 export interface IEmissionRecord {
     uuid: string; //
     utilityId: string; //
@@ -49,4 +51,11 @@ export interface IUpdateEmissionsMintedTokenRequest {
     tokenId: string;
     partyId: string;
     uuids: string[];
+}
+
+// v2
+export interface ICaller {
+    type: FabricSigningCredentialType;
+    token: string;
+    username: string;
 }

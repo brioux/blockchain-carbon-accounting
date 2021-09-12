@@ -11,14 +11,17 @@ import { v4 as uuid4 } from 'uuid';
 import { PluginKeychainVault } from '@hyperledger/cactus-plugin-keychain-vault';
 import { PluginRegistry } from '@hyperledger/cactus-core';
 import { readFileSync } from 'fs';
+import AWSS3 from '../blockchain-gateway/utils/aws';
 export class LedgerConfig {
     fabricConnector: PluginLedgerConnectorFabric;
     inMemoryKeychain: IPluginKeychain;
     certStoreKeychain: IPluginKeychain;
     pluginRegistry: PluginRegistry;
+    awss3: AWSS3;
     constructor(logLevel: LogLevelDesc) {
         const fnTag = 'LedgerConfig#constructor';
         const log = LoggerProvider.getOrCreate({ label: 'LedgerConfig', level: logLevel });
+        this.awss3 = new AWSS3();
         this.inMemoryKeychain = new PluginKeychainMemory({
             instanceId: uuid4(),
             keychainId: 'inMemoryKeychain',

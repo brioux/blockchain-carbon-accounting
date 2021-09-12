@@ -104,7 +104,7 @@ export class IdentityRouter {
         );
         if (req.query.type === 'CLIENT') {
             try {
-                this.opts.backend.createClientIdentity(token, username, password);
+                await this.opts.backend.createClientIdentity(token, username, password);
             } catch (error) {
                 this.log.error(`${fnTag} failed to create a client identity ${error}`);
                 return res.status(209).json({
@@ -113,7 +113,7 @@ export class IdentityRouter {
             }
         } else if (req.query.type === 'MANAGER') {
             try {
-                this.opts.backend.createManagerIdentity(token, username, password);
+                await this.opts.backend.createManagerIdentity(token, username, password);
             } catch (error) {
                 this.log.error(`${fnTag} failed to create a manager identity ${error}`);
                 return res.status(209).json({

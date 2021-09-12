@@ -148,6 +148,111 @@
                         "type": "string"
                     }
                 }
+            },
+            "emissionData" : {
+                "type": "object",
+                "properties": {
+                  "utilityId": {
+                    "type": "string",
+                    "example" : "USA_EIA_252522444142552441242521"
+                  },
+                  "partyId": {
+                    "type": "string",
+                    "example" : "4b929e32ba59d31727c172f3f6380ed2d10f1a2933710c0aaea988a865f63f90"
+                  },
+                  "fromDate": {
+                    "type": "string",
+                    "example": "2020-05-07T10:10:09Z"
+                  },
+                  "thruDate": {
+                    "type": "string",
+                    "example" : "2021-05-07T10:10:09Z"
+                  },
+                  "emissionsAmount": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "emissionsUom": {
+                    "type": "string",
+                    "example" : "kWh"
+                  },
+                  "renewableEnergyUseAmount": {
+                    "type": "number"
+                  },
+                  "nonrenewableEnergyUseAmount": {
+                    "type": "number"
+                  },
+                  "energyUseUom": {
+                    "type": "number"
+                  },
+                  "factorSource": {
+                    "type": "string",
+                    "example" : "eGrid 2019 NERC_REGION MRO"
+                  }
+                }
+                 
+            },
+            "recordEmissions" : {
+                "type": "object",
+                "required": [
+                    "utilityId",
+                    "partyId",
+                    "fromDate",
+                    "thruDate",
+                    "energyUseAmount",
+                    "energyUseUom"
+                ],
+                "properties": {
+                    "utilityId": {
+                        "type": "string",
+                        "example": "USA_EIA_252522444142552441242521"
+                      },
+                      "partyId": {
+                        "type": "string",
+                        "example": "party1"
+                      },
+                      "fromDate": {
+                        "type": "string",
+                        "example" : "2020-05-07T10:10:09Z"
+                      },
+                      "thruDate": {
+                        "type": "string",
+                        "example" : "2021-05-07T10:10:09Z"
+                      },
+                      "energyUseAmount": {
+                        "type": "integer",
+                        "format": "int32",
+                        "example" : 100
+                      },
+                      "energyUseUom": {
+                        "type": "string",
+                        "example": "kWh"
+                      },
+                      "emissionsDoc": {
+                        "type": "string",
+                        "format": "binary"
+                      }
+                }
+            },
+            "recordAuditedEmissionsToken" : {
+                "type": "object",
+                "required": [
+                    "partyId",
+                    "addressToIssue",
+                    "emissionsRecordsToAudit"
+                ],
+                "properties": {
+                    "partyId": {
+                        "type": "string"
+                      },
+                      "addressToIssue": {
+                        "type": "string"
+                      },
+                      "emissionsRecordsToAudit": {
+                        "type": "string",
+                        "description": "Comma separated list of emissions record's uuid"
+                      }
+                }
             }
         },
         "parameters": {
@@ -468,6 +573,189 @@
                             "application/json":{
                                 "schema" : {
                                     "$ref" : "#/components/schemas/registerRes"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/emissionscontract/recordEmissions" : {
+            "post" : {
+                "tags": ["Emissions Contract"],
+                "summary": "Record emissions of utility to utilityEmissionsChannel",
+                "description": "Record emissions of utility to utilityEmissionsChannel",
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    }
+                ],
+                "requestBody" : {
+                    "content": {
+                        "multipart/form-data" : {
+                            "schema" : {
+                                "$ref" : "#/components/schemas/recordEmissions"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201" : {
+                        "description": "Success. Emissions recorded"
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/emissionscontract/recordAuditedEmissionsToken" : {
+            "post" : {
+                "tags": ["Emissions Contract"],
+                "summary": "Record emissions of utility to utilityEmissionsChannel",
+                "description": "Record emissions of utility to utilityEmissionsChannel",
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    }
+                ],
+                "requestBody" : {
+                    "content": {
+                        "application/json" : {
+                            "schema" : {
+                                "$ref" : "#/components/schemas/recordAuditedEmissionsToken"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201" : {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json" : {
+                                "schema" : {
+                                    "type": "array",
+                                    "items" : {
+                                        "$ref" : "#/components/schemas/emissionData"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/emissionscontract/getEmissionsData/{uuid}" : {
+            "get" : {
+                "description": "Get emissions data of utility",
+                "summary": "Get emissions data of utility by ID",
+                "tags": ["Emissions Contract"],
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    },
+                    {
+                        "name": "uuid",
+                        "in": "path",
+                        "required": true,
+                        "schema" : {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json" : {
+                                "schema" : {
+                                    "$ref" : "#/components/schemas/emissionData"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/emissionscontract/getAllEmissionsData/{utilityId}/{partyId}" : {
+            "get" : {
+                "tags": ["Emissions Contract"],
+                "summary": "Get all emissions data from the past year of utility",
+                "description": "Get all emissions data of utility by ID of utility and party",
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    },
+                    {
+                        "name": "utilityId",
+                        "in": "path",
+                        "required": true,
+                        "example" : "USA_EIA_252522444142552441242521",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "partyId",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json" : {
+                                "schema" : {
+                                    "type": "array",
+                                    "items" : {
+                                        "$ref" : "#/components/schemas/emissionData"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/utilityemissionchannel/emissionscontract/getAllEmissionsDataByDateRange/{fromDate}/{thruDate}" : {
+            "get" : {
+                "tags": ["Emissions Contract"],
+                "summary": "Get all emissions data by a range of dates",
+                "description": "Get all emissions data by a range of dates",
+                "parameters": [
+                    {
+                        "$ref" : "#/components/parameters/identityCallerType"
+                    },
+                    {
+                        "name": "fromDate",
+                        "in": "path",
+                        "required": true,
+                        "example" : "2020-05-07T10:10:09Z",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    {
+                        "name": "thruDate",
+                        "in": "path",
+                        "required": true,
+                        "example" : "2021-05-07T10:10:09Z",
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200" : {
+                        "description": "Successful operation",
+                        "content": {
+                            "application/json" : {
+                                "schema" : {
+                                    "type": "array",
+                                    "items" : {
+                                        "$ref" : "#/components/schemas/emissionData"
+                                    }
                                 }
                             }
                         }

@@ -13,7 +13,6 @@ import { load } from 'js-yaml';
 import { readFileSync } from 'fs';
 import { randomBytes } from 'crypto';
 import { Server } from "http";
-import { socketServer } from 'ws';
 chai.use(asPromised);
 
 const port = '8500';
@@ -36,7 +35,7 @@ let ca: CA;
 before (async () => {
   server = await startServer(port);
   const socketServerOptions: FabricSocketServerOptions = {
-    path: '/sockets',
+    path: '/idp',
     server,
     logLevel: 'debug'
   }

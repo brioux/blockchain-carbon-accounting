@@ -100,7 +100,7 @@ export class WebSocketClient {
       const wsHostUrl = `${this.host}?sessionId=${sessionId}&signature=${signature}&crv=${this.keyData.curve}`;
       this.log.debug(`${fnTag} Open new WebSocket to host: ${wsHostUrl}`);
       this.ws = new WebSocket(wsHostUrl);
-      //await waitForSocketState(this.ws, this.ws.OPEN);
+      await waitForSocketState(this.ws, this.ws.OPEN);
     } catch (error) {
       throw new Error(
         `Error creating web-socket connection to host ${this.host}: ${error}`,
@@ -129,7 +129,8 @@ export class WebSocketClient {
   async close(): Promise<void> {
     if (this.ws) {
       this.ws.close();
-      //await waitForSocketState(this.ws, this.ws.CLOSED);
+      console.log('closing web socket')
+      await waitForSocketState(this.ws, this.ws.CLOSED);
     }
   }
   /**
@@ -182,7 +183,6 @@ export function waitForSocketState(
       setTimeout(function () {
         if (socket.readyState === state) {
           resolve();
-          //resolve(socket);
         } else {
           waitForSocketState(socket, state).then(resolve);
         }

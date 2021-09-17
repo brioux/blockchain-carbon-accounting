@@ -11,13 +11,19 @@ import { UtilityEmissionsChannelRouterV2 } from '../routers/utilityEmissionsChan
 import { NetEmissionsTokenNetworkContractV2 } from './netEmissionsTokenNetwork-v2';
 import { contractName, abi } from '../contracts/NetEmissionsTokenNetwork.json';
 import { CarbonAccountingRouterV2 } from '../routers/carbonAccounting-v2';
+import { Server } from 'http';
+
+interface ILedgerIntegration {
+    app: Express;
+    server: Server;
+}
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
-    constructor(readonly app: Express) {
+    constructor(readonly opts: ILedgerIntegration) {
+        const { app, server } = opts;
         const logLevel = 'DEBUG';
         const vaultBackend = new VaultIdentityBackend(logLevel);
-
-        const ledgerConfig = new LedgerConfig(logLevel);
+        const ledgerConfig = new LedgerConfig(logLevel,server);
 
         // vault token based authentication
         const auth = async (req: Request, res: Response, next) => {

@@ -4,7 +4,14 @@ import { NetEmissionsTokenNetworkContractV2 } from '../blockchain-gateway/netEmi
 import { Request, Response, Router } from 'express';
 import { IEmissionRecord, ICaller } from '../blockchain-gateway/I-utilityEmissionsChannel';
 import { query, body, header, validationResult } from 'express-validator';
-import { FabricSigningCredentialType } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+
+//import { FabricSigningCredentialType } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+import { 
+    FabricSigningCredentialType,
+    VaultKey,
+    WebSocketKey
+} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+
 import { toTimestamp } from '../blockchain-gateway/utils/dateUtils';
 import { IEthCaller } from '../blockchain-gateway/I-netEmissionsTokenNetwork';
 export interface ICarbonAccountingRouterV2Options {
@@ -50,12 +57,16 @@ export class CarbonAccountingRouterV2 {
         }
         const token = (req as any).token;
         const username = (req as any).username;
+        const vaultKey = (req as any).vaultKey;
+        const webSocketKey = (req as any).webSocketKey        
         const callerType = req.query.callerType;
         const partyId = req.body.partyId;
         const caller: ICaller = {
             token: token,
             username: username,
             type: callerType as FabricSigningCredentialType,
+            vaultKey: vaultKey,
+            webSocketKey: WebSocketKey,
         };
         const ethCaller: IEthCaller = {
             username: username,
@@ -216,9 +227,9 @@ export class CarbonAccountingRouterV2 {
         });
     }
     private __callerType(input): boolean {
-        if (!['X.509', 'Vault-X.509'].includes(input)) {
+        if (!['X.509', 'Vault-X.509','Ws-X.509'].includes(input)) {
             throw new Error(
-                `supported caller type = {X.509 | Vault-X.509}, but provided : ${input}`,
+                `supported caller type = {X.509 | Vault-X.509 | 'Ws-X.509'}, but provided : ${input}`,
             );
         }
         return true;

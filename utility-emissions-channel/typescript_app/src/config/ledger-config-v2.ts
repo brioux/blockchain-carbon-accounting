@@ -2,9 +2,15 @@ import { IPluginKeychain } from '@hyperledger/cactus-core-api';
 import {
     FabricSigningCredentialType,
     IVaultConfig,
+    IWebSocketConfig,
+    FabricSocketServer,
+    FabricSocketServerOptions,
     PluginLedgerConnectorFabric,
     IPluginLedgerConnectorFabricOptions,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+//} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+import { Server } from 'http';
+
 import { PluginKeychainMemory } from '@hyperledger/cactus-plugin-keychain-memory';
 import { Checks, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common';
 import { v4 as uuid4 } from 'uuid';
@@ -20,7 +26,7 @@ export class LedgerConfig {
     certStoreKeychain: IPluginKeychain;
     pluginRegistry: PluginRegistry;
     awss3: AWSS3;
-    constructor(logLevel: LogLevelDesc) {
+    constructor(logLevel: LogLevelDesc, server: Server) {
         const fnTag = 'LedgerConfig#constructor';
         const log = LoggerProvider.getOrCreate({ label: 'LedgerConfig', level: logLevel });
         this.awss3 = new AWSS3();
@@ -58,11 +64,13 @@ export class LedgerConfig {
         {
             const identitySupport: FabricSigningCredentialType[] = [];
             let vaultConfig: IVaultConfig;
+            let webSocketConfig: IWebSocketConfig;
             {
                 const iSupportString = process.env.LEDGER_FABRIC_IDENTITY_SUPPORT;
                 Checks.nonBlankString(iSupportString, `${fnTag} FABRIC_IDENTITY_SUPPORT`);
                 const iSupport = iSupportString.split(',');
                 {
+
                     if (iSupport.includes('default')) {
                         identitySupport.push(FabricSigningCredentialType.X509);
                     }
@@ -81,6 +89,18 @@ export class LedgerConfig {
                         };
                         identitySupport.push(FabricSigningCredentialType.VaultX509);
                     }
+
+                    if (iSupport.includes('web-socket')) {
+                        const wsPath = process.env.WEB_SOCKET_PATH;
+                        const socketServerOptions: FabricSocketServerOptions = {
+                          path: wsPath,
+                          server: server,
+                          logLevel: logLevel,
+                        };
+                        const server = new FabricSocketServer(socketServerOptions);
+                        webSocketConfig = {server: server};
+                        identitySupport.push(FabricSigningCredentialType.WsX509);
+                    }
                     log.info(`${fnTag} FABRIC IDENTITY SUPPORT = ${identitySupport}`);
                 }
             }
@@ -98,6 +118,7 @@ export class LedgerConfig {
                 },
                 supportedIdentity: identitySupport,
                 vaultConfig: vaultConfig,
+                webSocketConfig: webSocketConfig,
             };
             {
                 const ccpPath = process.env.LEDGER_FABRIC_CCP;

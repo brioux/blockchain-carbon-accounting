@@ -4,7 +4,9 @@ import {
     FabricSigningCredential,
     FabricSigningCredentialType,
     PluginLedgerConnectorFabric,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+//} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+
 import { checkDateConflict } from './utils/dateUtils';
 import {
     ICaller,
@@ -230,12 +232,14 @@ export class UtilityEmissionsChannelV2 {
             keychainRef: caller.username,
             type: caller.type,
         };
-        if (signer.type === FabricSigningCredentialType.VaultX509) {
-            signer.vaultTransitKey = {
-                keyName: caller.username,
-                token: caller.token,
-            };
-        }
+        switch(signer.type) {
+            case FabricSigningCredentialType.VaultX509:
+                signer.vaultTransitKey = caller.vaultKey;
+                break
+            case FabricSigningCredentialType.WsX509:
+                signer.webSocketKey = caller.webSocketKey
+                break
+        };
         return signer;
     }
 

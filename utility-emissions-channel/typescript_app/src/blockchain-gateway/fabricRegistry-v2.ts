@@ -3,7 +3,9 @@ import {
     FabricSigningCredential,
     FabricSigningCredentialType,
     PluginLedgerConnectorFabric,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+//} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e';
+
 import { IPluginKeychain } from '@hyperledger/cactus-core-api';
 import { IEnrollRequest, IRegistrarRequest, IRegistrarResponse } from './I-fabricRegistry-v2';
 import { VaultIdentityBackend } from '../identity/backend';
@@ -34,13 +36,14 @@ export class FabricRegistryV2 {
             keychainRef: req.username,
             type: req.callerType,
         };
-
-        if (signer.type === FabricSigningCredentialType.VaultX509) {
-            signer.vaultTransitKey = {
-                keyName: req.username,
-                token: req.token,
-            };
-        }
+        switch(signer.type) {
+            case FabricSigningCredentialType.VaultX509:
+                signer.vaultTransitKey = req.vaultKey;
+                break
+            case FabricSigningCredentialType.WsX509:
+            signer.webSocketKey = req.webSocketKey
+                break
+        };
         let secret = req.secret;
         if (!secret) {
             this.log.debug(`${fnTag} secret not provided fetching from vault`);
@@ -80,13 +83,14 @@ export class FabricRegistryV2 {
             keychainRef: req.username,
             type: req.callerType,
         };
-
-        if (signer.type === FabricSigningCredentialType.VaultX509) {
-            signer.vaultTransitKey = {
-                keyName: req.username,
-                token: req.token,
-            };
-        }
+        switch(signer.type) {
+            case FabricSigningCredentialType.VaultX509:
+                signer.vaultTransitKey = req.vaultKey;
+                break
+            case FabricSigningCredentialType.WsX509:
+            signer.webSocketKey = req.webSocketKey
+                break
+        };
         this.log.debug(`${fnTag} registering ${req.enrollmentID}`);
         try {
             const password = randomBytes(16).toString('hex');

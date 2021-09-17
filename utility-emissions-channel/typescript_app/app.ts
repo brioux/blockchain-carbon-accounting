@@ -35,15 +35,18 @@ app.use('/v2-api-docs', serve, setup(swaggerDocsV2));
 // .build()
 // .then(() => {
 
-new LedgerIntegrationV2(app);
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
     console.log(`++++++++++++++++ Hyperledger CA2 SIG /// Carbon Accouncting API ++++++++++++++++`);
     console.log(`++ REST API PORT : ${PORT}`);
     console.log(`++ ACCESS SWAGGER : http://localhost:${PORT}/api-docs/`);
     console.log(`++ ACCESS SWAGGER V2 : http://localhost:${PORT}/v2-api-docs/`);
     console.log(`++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
 });
+
+new LedgerIntegrationV2(app,server);
+
+
 // })
 // .catch((error) => {
 // console.error('failed to build ledger Integration : %o', error);

@@ -1,16 +1,16 @@
 // I-fabricRegistry-v2.ts : defines interface to enroll/register user
 // with fabric ca.
-//import { FabricSigningCredentialType } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
 
 import { 
     FabricSigningCredentialType,
-    VaultKey,
+    VaultTransitKey,
     WebSocketKey
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e';
+} from '@brioux/cactus-plugin-ledger-connector-fabric';
 
 export interface IRegistrarRequest {
     callerType: FabricSigningCredentialType;
-    vaultKey?: VaultKey;
+    username: string;
+    vaultKey?: VaultTransitKey;
     webSocketKey?: WebSocketKey;
     //
     enrollmentID: string;
@@ -27,7 +27,7 @@ export interface IRegistrarResponse {
 export interface IEnrollRequest {
     callerType: FabricSigningCredentialType;
     username: string;
-    vaultKey?: VaultKey;
+    vaultKey?: VaultTransitKey;
     webSocketKey?: WebSocketKey;
     secret?: string;
 }

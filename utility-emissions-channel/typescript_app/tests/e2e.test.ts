@@ -8,7 +8,7 @@ import {
     FabricContractInvocationType,
     FabricSigningCredential,
     PluginLedgerConnectorFabric,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@brioux/cactus-plugin-ledger-connector-fabric';
 import { readUtilityEmissionChaincodeCfg } from '../src/config/ledger-config';
 import { PluginRegistry } from '@hyperledger/cactus-core';
 import { createHash } from 'crypto';

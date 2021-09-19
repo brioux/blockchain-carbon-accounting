@@ -7,8 +7,7 @@ import {
     FabricSocketServerOptions,
     PluginLedgerConnectorFabric,
     IPluginLedgerConnectorFabricOptions,
-//} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+} from '@brioux/cactus-plugin-ledger-connector-fabric'
 import { Server } from 'http';
 
 import { PluginKeychainMemory } from '@hyperledger/cactus-plugin-keychain-memory';
@@ -97,8 +96,8 @@ export class LedgerConfig {
                           server: server,
                           logLevel: logLevel,
                         };
-                        const server = new FabricSocketServer(socketServerOptions);
-                        webSocketConfig = {server: server};
+                        const socketServer = new FabricSocketServer(socketServerOptions);
+                        webSocketConfig = {server: socketServer};
                         identitySupport.push(FabricSigningCredentialType.WsX509);
                     }
                     log.info(`${fnTag} FABRIC IDENTITY SUPPORT = ${identitySupport}`);

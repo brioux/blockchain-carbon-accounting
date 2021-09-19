@@ -1,12 +1,11 @@
 // I-utilityEmissionsChannel.ts : defines interface of request and response to/from
 // utilityEmissionsChannel chaincode
 
-//import { FabricSigningCredentialType } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
 import { 
     FabricSigningCredentialType,
-    VaultKey,
+    VaultTransitKey,
     WebSocketKey
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+} from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 export interface IEmissionRecord {
     uuid: string; //
@@ -63,6 +62,6 @@ export interface ICaller {
     type: FabricSigningCredentialType;
     token: string;
     username: string;
-    vaultKey?: VaultKey;
+    vaultKey?: VaultTransitKey;
     webSocketKey?: WebSocketKey;
 }

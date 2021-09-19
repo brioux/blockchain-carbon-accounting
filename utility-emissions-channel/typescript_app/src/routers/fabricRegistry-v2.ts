@@ -56,11 +56,11 @@ export class FabricRegistryRouterV2 {
                 vaultKey: {
                     keyName: (req as any).username, 
                     token: (req as any).token,
-                }
+                },
                 webSocketKey: {
                     sessionId: (req as any).sessionId,
                     signature: (req as any).signature,
-                }
+                },
                 secret: req.header('enrollmentSecret'),
             });
             return res.sendStatus(200);
@@ -84,14 +84,15 @@ export class FabricRegistryRouterV2 {
         try {
             const resp = await this.opts.registry.register({
                 callerType: req.query.callerType as any,
+                username: (req as any).username,
                 vaultKey:{
                     keyName: (req as any).username,
                     token: (req as any).token,
-                }
+                },
                 webSocketKey: {
                     sessionId: (req as any).sessionId,
                     signature: (req as any).signature,
-                }
+                },
                 enrollmentID: req.body.enrollmentID,
                 role: req.body.role,
                 affiliation: req.body.affiliation,
@@ -107,9 +108,9 @@ export class FabricRegistryRouterV2 {
     }
 
     private __callerType(input): boolean {
-        if (!['X.509', 'Vault-X.509', 'Ws-X.509'].includes(input)) {
+        if (!['X.509', 'Vault-X.509', 'WS-X.509'].includes(input)) {
             throw new Error(
-                `supported caller type = {X.509 | Vault-X.509 | 'Ws-X.509'}, but provided : ${input}`,
+                `supported caller type = {X.509 | Vault-X.509 | 'WS-X.509'}, but provided : ${input}`,
             );
         }
         return true;

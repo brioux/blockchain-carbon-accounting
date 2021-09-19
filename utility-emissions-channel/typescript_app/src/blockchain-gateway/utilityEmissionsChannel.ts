@@ -3,7 +3,7 @@ import { Logger, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common
 import {
     FabricContractInvocationType,
     PluginLedgerConnectorFabric,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@brioux/cactus-plugin-ledger-connector-fabric';
 import {
     IEmissionRecord,
     IRecordEmissionsInput,

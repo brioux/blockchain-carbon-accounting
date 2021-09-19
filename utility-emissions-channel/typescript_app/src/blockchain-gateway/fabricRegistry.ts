@@ -4,7 +4,7 @@ import { Logger, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common
 import {
     FabricSigningCredentialType,
     PluginLedgerConnectorFabric,
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+} from '@brioux/cactus-plugin-ledger-connector-fabric';
 import { IEnrollRegistrarRequest, IEnrollRegistrarResponse } from './I-fabricRegistry';
 import { PluginKeychainVault } from '@hyperledger/cactus-plugin-keychain-vault';
 

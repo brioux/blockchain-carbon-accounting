@@ -231,9 +231,9 @@ export class UtilityEmissionsChannelRouterV2 {
     }
 
     private __callerType(input): boolean {
-        if (!['X.509', 'Vault-X.509', 'Ws-X.509'].includes(input)) {
+        if (!['X.509', 'Vault-X.509', 'WS-X.509'].includes(input)) {
             throw new Error(
-                `supported caller type = {X.509 | Vault-X.509 | 'Ws-X.509'}, but provided : ${input}`,
+                `supported caller type = {X.509 | Vault-X.509 | 'WS-X.509'}, but provided : ${input}`,
             );
         }
         return true;

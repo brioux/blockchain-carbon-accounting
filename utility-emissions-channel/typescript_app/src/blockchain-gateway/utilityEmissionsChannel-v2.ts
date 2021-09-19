@@ -4,8 +4,7 @@ import {
     FabricSigningCredential,
     FabricSigningCredentialType,
     PluginLedgerConnectorFabric,
-//} from '@hyperledger/cactus-plugin-ledger-connector-fabric';
-} from '@hyperledger/cactus-plugin-ledger-connector-fabric@0.9.1-web-socket-identity-provider.845e2a3e.23+845e2a3e'
+} from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 import { checkDateConflict } from './utils/dateUtils';
 import {

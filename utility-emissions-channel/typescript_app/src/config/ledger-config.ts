@@ -1,7 +1,7 @@
 // ledger-config.ts : defines and read configuration for ledger integration
 import { LogLevelDesc, Checks } from '@hyperledger/cactus-common';
 import netEmissionTokenContractJSON from '../contracts/NetEmissionsTokenNetwork.json';
-import { ConnectionProfile } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+import { ConnectionProfile } from '@brioux/cactus-plugin-ledger-connector-fabric';
 import { readFileSync } from 'fs';
 
 export interface ILedgerIntegrationConfig {

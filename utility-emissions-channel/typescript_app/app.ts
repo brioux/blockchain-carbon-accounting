@@ -44,7 +44,7 @@ const server = app.listen(PORT, () => {
     console.log(`++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
 });
 
-new LedgerIntegrationV2(app,server);
+new LedgerIntegrationV2({app,server});
 
 
 // })

@@ -113,6 +113,8 @@ export class UtilityEmissionsChannelRouterV2 {
                     type: callerType as any,
                     username: username,
                     token: token,
+                    sessionId: (req as any).sessionId,
+                    signature: (req as any).signature, 
                 },
                 {
                     utilityId: utilityId,
@@ -151,6 +153,8 @@ export class UtilityEmissionsChannelRouterV2 {
                     type: callerType as any,
                     username: username,
                     token: token,
+                    sessionId: (req as any).sessionId, 
+                    signature: (req as any).signature, 
                 },
                 uuid,
             );
@@ -182,6 +186,8 @@ export class UtilityEmissionsChannelRouterV2 {
                     type: callerType as any,
                     username: username,
                     token: token,
+                    sessionId: (req as any).sessionId, 
+                    signature: (req as any).signature, 
                 },
                 {
                     utilityId: utilityId,
@@ -216,6 +222,8 @@ export class UtilityEmissionsChannelRouterV2 {
                     type: callerType as any,
                     username: username,
                     token: token,
+                    sessionId: (req as any).sessionId, 
+                    signature: (req as any).signature, 
                 },
                 {
                     fromDate: fromDate,

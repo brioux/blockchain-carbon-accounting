@@ -233,10 +233,16 @@ export class UtilityEmissionsChannelV2 {
         };
         switch(signer.type) {
             case FabricSigningCredentialType.VaultX509:
-                signer.vaultTransitKey = caller.vaultKey;
+                signer.vaultTransitKey = {
+                    token: caller.token,
+                    keyName: caller.username,
+                };
                 break
             case FabricSigningCredentialType.WsX509:
-                signer.webSocketKey = caller.webSocketKey
+                signer.webSocketKey = {
+                    sessionId: caller.sessionId,
+                    signature: caller.signature,
+                }
                 break
         };
         return signer;

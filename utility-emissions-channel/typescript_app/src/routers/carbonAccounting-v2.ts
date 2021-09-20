@@ -60,8 +60,8 @@ export class CarbonAccountingRouterV2 {
             token: token,
             username: username,
             type: callerType as FabricSigningCredentialType,
-            vaultKey: vaultKey,
-            webSocketKey: webSocketKey,
+            sessionId: (req as any).sessionid,
+            signature: (req as any).signature,
         };
         const ethCaller: IEthCaller = {
             username: username,

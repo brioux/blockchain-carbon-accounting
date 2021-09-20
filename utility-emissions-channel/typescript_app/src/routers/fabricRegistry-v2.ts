@@ -32,9 +32,9 @@ export class FabricRegistryRouterV2 {
                 body('role').isString().notEmpty(),
                 body('affiliation').isString().notEmpty(),
                 body('maxEnrollments').isNumeric().optional(),
-                body('attrs.*.name').isString().notEmpty(),
-                body('attrs.*.value').isString().notEmpty(),
-                body('attrs.*.ecert').isBoolean().optional(),
+//                body('attrs.*.name').isString().notEmpty(),
+//                body('attrs.*.value').isString().notEmpty(),
+//                body('attrs.*.ecert').isBoolean().optional(),
             ],
             this.register.bind(this),
         );

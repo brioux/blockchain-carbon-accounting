@@ -11,24 +11,25 @@ import { UtilityEmissionsChannelRouterV2 } from '../routers/utilityEmissionsChan
 import { NetEmissionsTokenNetworkContractV2 } from './netEmissionsTokenNetwork-v2';
 import { contractName, abi } from '../contracts/NetEmissionsTokenNetwork.json';
 import { CarbonAccountingRouterV2 } from '../routers/carbonAccounting-v2';
-import { FabricSocketServer,FabricSocketServerOptions } from '@brioux/cactus-plugin-ledger-connector-fabric'
-
-interface ILedgerIntegration {
-    app: Express;
-    server: any;
-}
+import { 
+    FabricSigningCredentialType,
+    FabricSocketServer,
+    FabricSocketServerOptions 
+} from '@brioux/cactus-plugin-ledger-connector-fabric'
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
-    constructor(readonly opts: ILedgerIntegration) {
-        const { app, server } = opts;
+    constructor(readonly app: Express) {
+
         const logLevel = 'DEBUG';
         const vaultBackend = new VaultIdentityBackend(logLevel);
 
-        const wsPath = process.env.WEB_SOCKET_PATH;
+        const port = process.env.WEB_SOCKET_SERVER_PORT || '8000';
+        const server  = require('http').createServer(app).listen(port);
+        const wsPath = process.env.WEB_SOCKET_PATH || '/sessions';
         const socketServerOptions: FabricSocketServerOptions = {
-          path: wsPath,
-          server: server,
-          logLevel,
+            path: wsPath,
+            server: server,
+            logLevel,
         };
         const socketServer = new FabricSocketServer(socketServerOptions);
 
@@ -36,16 +37,31 @@ export class LedgerIntegrationV2 {
 
         // vault token based authentication
         const auth = async (req: Request, res: Response, next) => {
+            
             const bearerHeader = req.header('Authorization');
-            if (!bearerHeader) {
+            const sessionId= req.header('sessionId');
+            const signature= req.header('signature');
+            if (!bearerHeader && (!signature && !sessionId)) {
                 return res.sendStatus(403);
-            }
-            const token = bearerHeader.split(' ')[1];
+            } 
             try {
-                const details = await vaultBackend.tokenDetails(token);
-                (req as any).token = token;
-                (req as any).username = details.username;
+                switch(req.query.callerType){
+                    case FabricSigningCredentialType.VaultX509 :
+                        const token = bearerHeader.split(' ')[1];
+                        const details = await vaultBackend.tokenDetails(token);
+                        (req as any).token = token;
+                        (req as any).username = details.username;
+                        break;
+                    case FabricSigningCredentialType.WsX509 :
+                        (req as any).username = 
+                            req.header('username') || 
+                            (await socketServer.getClient({sessionId,signature}))?.keyName;
+                        (req as any).sessionId = sessionId;
+                        (req as any).signature = signature;
+                        break;
+                }
                 next();
+
             } catch (error) {
                 return res.sendStatus(403);
             }

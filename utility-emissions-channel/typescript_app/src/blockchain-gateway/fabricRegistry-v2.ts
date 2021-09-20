@@ -64,7 +64,7 @@ export class FabricRegistryV2 {
                 mspId: this.opts.orgMSP,
                 caId: this.opts.caId,
             });
-            this.log.debug(`${fnTag} enrolled ${req.username} of type = ${req.callerType}`);
+            this.log.debug(`${fnTag} enrolled ${req.username} of type ${req.callerType}`);
         } catch (error) {
             this.log.error(
                 `${fnTag} failed to enroll client of type ${req.callerType} : %o`,
@@ -76,7 +76,7 @@ export class FabricRegistryV2 {
 
     async register(req: IRegistrarRequest): Promise<IRegistrarResponse> {
         const fnTag = `${this.className}#register`;
-        this.log.debug(`${fnTag} enrolling ${req.username} of type = ${req.callerType}`);
+        this.log.debug(`${fnTag} registering ${req.username} of type = ${req.callerType}`);
         const signer: FabricSigningCredential = {
             keychainId: this.opts.certstoreKeychain.getKeychainId(),
             keychainRef: req.username,
@@ -87,7 +87,7 @@ export class FabricRegistryV2 {
                 signer.vaultTransitKey = req.vaultKey;
                 break
             case FabricSigningCredentialType.WsX509:
-            signer.webSocketKey = req.webSocketKey
+                signer.webSocketKey = req.webSocketKey;
                 break
         };
         this.log.debug(`${fnTag} registering ${req.enrollmentID}`);
@@ -100,7 +100,7 @@ export class FabricRegistryV2 {
                     enrollmentSecret: password,
                     affiliation: req.affiliation,
                     maxEnrollments: req.maxEnrollments || -1,
-                    attrs: req.attrs,
+                    //attrs: req.attrs,
                     role: req.role || 'client',
                 },
                 this.opts.caId,

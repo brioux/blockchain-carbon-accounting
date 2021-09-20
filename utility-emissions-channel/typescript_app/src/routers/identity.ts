@@ -132,6 +132,7 @@ export class IdentityRouter {
         }
         return res.status(201).json({
             sessionId,
+            address: this.opts.socketServer.hostAddress
         });
     }
 

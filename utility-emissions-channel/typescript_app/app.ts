@@ -2,7 +2,7 @@ import { config } from 'dotenv';
 import express, { Express, json, urlencoded, RequestHandler } from 'express';
 // import LedgerIntegration from './src/blockchain-gateway/ledger-integration';
 import { serve, setup } from 'swagger-ui-express';
-import swaggerDocsV2 from './swagger.v2.json';
+import swaggerDocsV2 from './swagger.v2-ws.json';
 // import swaggerDocs from './swagger.json';
 import multer from 'multer';
 import { LedgerIntegrationV2 } from './src/blockchain-gateway/ledger-integration-v2';
@@ -35,6 +35,7 @@ app.use('/v2-api-docs', serve, setup(swaggerDocsV2));
 // .build()
 // .then(() => {
 
+new LedgerIntegrationV2(app);
 
 const server = app.listen(PORT, () => {
     console.log(`++++++++++++++++ Hyperledger CA2 SIG /// Carbon Accouncting API ++++++++++++++++`);
@@ -44,7 +45,7 @@ const server = app.listen(PORT, () => {
     console.log(`++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
 });
 
-new LedgerIntegrationV2({app,server});
+
 
 
 // })

@@ -3,8 +3,6 @@
 
 import { 
     FabricSigningCredentialType,
-    VaultTransitKey,
-    WebSocketKey
 } from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 export interface IEmissionRecord {
@@ -60,8 +58,8 @@ export interface IUpdateEmissionsMintedTokenRequest {
 // v2
 export interface ICaller {
     type: FabricSigningCredentialType;
-    token: string;
     username: string;
-    vaultKey?: VaultTransitKey;
-    webSocketKey?: WebSocketKey;
+    token?: string;
+    sessionId?: string;
+    signature?: string;
 }

@@ -20,6 +20,9 @@
             "description": "API for registering and enrolling clients/registrar"
         },
         {
+            "name" : "WebSocketSession"
+        },
+        {
             "name" : "Identity"
         },
         {
@@ -42,7 +45,7 @@
             "vaultToken" : {
                 "type": "http",
                 "scheme": "bearer"
-            }
+            },
         },
         "schemas": {
             "identityCredentials" : {
@@ -93,6 +96,25 @@
                         "value"  : {
                             "type": "object"
                         }
+                    }
+                }
+            },
+            "wsSessionReq" : {
+                "type": "object",
+                "required": ["pubKeyHex"],
+                "properties": {
+                    "pubKeyHex" : {
+                        "type": "string",
+                        "example": "client's pubKeyHex"
+                    }
+                }
+            },
+            "wsSessionRes" : {
+                "type": "object",
+                "required": ["sessionId"],
+                "properties": {
+                    "sessionId" : {
+                        "type": "string"
                     }
                 }
             },
@@ -265,12 +287,14 @@
                     "default" : "X.509",
                     "enum": [
                         "X.509",
-                        "Vault-X.509"
+                        "Vault-X.509",
+                        "WS-X.509"
                     ]
                 }
             }
         }
     },
+
     "paths": {
         "/im/identity" : {
             "post" : {
@@ -517,6 +541,34 @@
                 "responses": {
                     "201" : {
                         "description": "EC Transit Key Created"
+                    }
+                }
+            }
+        },
+        "/im/web-socket-session-id" : {
+            "post" : {
+                "description": "create a new web socket session-id using external clients pub-key-hex",
+                "summary": "initialize web-socket server for incoming connection",
+                "tags": ["WebSocketSession"],
+                "requestBody":{
+                    "content": {
+                        "application/json" : {
+                            "schema":{
+                                "$ref" : "#/components/schemas/wsSessionReq"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201" : {
+                        "description": "sessionId generated",
+                        "content": {
+                            "application/json":{
+                                "schema" : {
+                                    "$ref" : "#/components/schemas/wsSessionRes"
+                                }
+                            }
+                        }
                     }
                 }
             }

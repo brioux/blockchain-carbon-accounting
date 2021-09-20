@@ -40,7 +40,7 @@ export class FabricRegistryV2 {
                 signer.vaultTransitKey = req.vaultKey;
                 break
             case FabricSigningCredentialType.WsX509:
-            signer.webSocketKey = req.webSocketKey
+                signer.webSocketKey = req.webSocketKey
                 break
         };
         let secret = req.secret;

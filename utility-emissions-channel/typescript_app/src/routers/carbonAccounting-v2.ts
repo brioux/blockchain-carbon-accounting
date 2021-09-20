@@ -5,9 +5,7 @@ import { Request, Response, Router } from 'express';
 import { IEmissionRecord, ICaller } from '../blockchain-gateway/I-utilityEmissionsChannel';
 import { query, body, header, validationResult } from 'express-validator';
 
-import { 
-    FabricSigningCredentialType,
-} from '@brioux/cactus-plugin-ledger-connector-fabric'
+import { FabricSigningCredentialType } from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 import { toTimestamp } from '../blockchain-gateway/utils/dateUtils';
 import { IEthCaller } from '../blockchain-gateway/I-netEmissionsTokenNetwork';

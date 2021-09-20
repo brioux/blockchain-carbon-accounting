@@ -11,7 +11,7 @@ import { PluginKeychainVault } from '@hyperledger/cactus-plugin-keychain-vault';
 import { PluginRegistry } from '@hyperledger/cactus-core';
 import { v4 as uuid4 } from 'uuid';
 import { PluginLedgerConnectorXdai } from '@hyperledger/cactus-plugin-ledger-connector-xdai';
-import { PluginLedgerConnectorFabric } from '@hyperledger/cactus-plugin-ledger-connector-fabric';
+import { PluginLedgerConnectorFabric } from '@brioux/cactus-plugin-ledger-connector-fabric';
 import { FabricRegistryRouter } from '../routers/fabricRegistry';
 import { FabricRegistry } from './fabricRegistry';
 import { UtilityEmissionsChannel } from './utilityEmissionsChannel';

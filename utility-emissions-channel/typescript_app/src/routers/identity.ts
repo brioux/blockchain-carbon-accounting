@@ -1,12 +1,14 @@
 import { VaultIdentityBackend } from '../identity/backend';
 import { Logger, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common';
 import { Router, Request, Response } from 'express';
-import { header, query, validationResult } from 'express-validator';
+import { header, query, validationResult, body } from 'express-validator';
 import { randomBytes } from 'crypto';
+import { FabricSocketServer } from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 export interface IIdentityRouterOptions {
     logLevel: LogLevelDesc;
     backend: VaultIdentityBackend;
+    socketServer: FabricSocketServer;
 }
 
 export class IdentityRouter {
@@ -101,6 +103,36 @@ export class IdentityRouter {
             ],
             this.newTransitKey.bind(this),
         );
+
+        this.router.post(
+            '/web-socket-session-id',
+            [body('pubKeyHex').isString()], 
+            this.newSessionId.bind(this)
+        )
+    }
+
+    private async newSessionId(req: Request, res: Response){
+        const fnTag = `${req.method.toUpperCase()} ${req.url}`;
+        this.log.debug(fnTag);
+        const errors = validationResult(req);
+        let sessionId;
+        if (!errors.isEmpty()) {
+            this.log.debug(`${fnTag} BadJSON Request : %o`, errors.array());
+            return res.status(412).json({
+                errors: errors.array(),
+            });
+        }
+        try{
+            sessionId = this.opts.socketServer.newSessionId(req.body.pubKeyHex);
+        } catch (error){
+            this.log.error(`${fnTag} failed to get a new web-socket session-id`);
+            return res.status(209).json({
+                msg: (error as Error).message,
+            });            
+        }
+        return res.status(201).json({
+            sessionId,
+        });
     }
 
     private async newIdentity(req: Request, res: Response) {

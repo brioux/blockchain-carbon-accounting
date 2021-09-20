@@ -11,11 +11,11 @@ import { UtilityEmissionsChannelRouterV2 } from '../routers/utilityEmissionsChan
 import { NetEmissionsTokenNetworkContractV2 } from './netEmissionsTokenNetwork-v2';
 import { contractName, abi } from '../contracts/NetEmissionsTokenNetwork.json';
 import { CarbonAccountingRouterV2 } from '../routers/carbonAccounting-v2';
-import { Server } from 'http';
+import { FabricSocketServer,FabricSocketServerOptions } from '@brioux/cactus-plugin-ledger-connector-fabric'
 
 interface ILedgerIntegration {
     app: Express;
-    server: Server;
+    server: any;
 }
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
@@ -23,7 +23,16 @@ export class LedgerIntegrationV2 {
         const { app, server } = opts;
         const logLevel = 'DEBUG';
         const vaultBackend = new VaultIdentityBackend(logLevel);
-        const ledgerConfig = new LedgerConfig(logLevel,server);
+
+        const wsPath = process.env.WEB_SOCKET_PATH;
+        const socketServerOptions: FabricSocketServerOptions = {
+          path: wsPath,
+          server: server,
+          logLevel,
+        };
+        const socketServer = new FabricSocketServer(socketServerOptions);
+
+        const ledgerConfig = new LedgerConfig(logLevel,socketServer);
 
         // vault token based authentication
         const auth = async (req: Request, res: Response, next) => {
@@ -41,12 +50,12 @@ export class LedgerIntegrationV2 {
                 return res.sendStatus(403);
             }
         };
-
         {
             // start identity manager
             const identityRouter = new IdentityRouter({
                 logLevel: logLevel,
                 backend: vaultBackend,
+                socketServer: socketServer,
             });
             app.use('/api/v2/im', identityRouter.router);
         }
@@ -77,7 +86,6 @@ export class LedgerIntegrationV2 {
                 fabricRegistryRouter.router,
             );
         }
-
         // utility emissions routers
         const utilityEmissionsChannel = new UtilityEmissionsChannelV2({
             logLevel: logLevel,

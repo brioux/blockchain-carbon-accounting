@@ -35,9 +35,16 @@ app.use('/v2-api-docs', serve, setup(swaggerDocsV2));
 // .build()
 // .then(() => {
 
+const credentials = {
+  key: process.env.SSL_KEY,
+  cert: process.env.SSL_CERT,
+};
+//const server = require('https').createServer(credentials, app);
+const server = require('http').createServer(app);
+
 new LedgerIntegrationV2(app);
 
-const server = app.listen(PORT, () => {
+app.listen(PORT, () => {
     console.log(`++++++++++++++++ Hyperledger CA2 SIG /// Carbon Accouncting API ++++++++++++++++`);
     console.log(`++ REST API PORT : ${PORT}`);
     console.log(`++ ACCESS SWAGGER : http://localhost:${PORT}/api-docs/`);

@@ -13,27 +13,20 @@ import { contractName, abi } from '../contracts/NetEmissionsTokenNetwork.json';
 import { CarbonAccountingRouterV2 } from '../routers/carbonAccounting-v2';
 import { 
     FabricSigningCredentialType,
-    FabricSocketServer,
-    FabricSocketServerOptions 
 } from '@brioux/cactus-plugin-ledger-connector-fabric'
+import { WsIdentityClient } from 'ws-identity-client';
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
     constructor(readonly app: Express) {
 
         const logLevel = 'DEBUG';
         const vaultBackend = new VaultIdentityBackend(logLevel);
-
-        const port = process.env.WEB_SOCKET_SERVER_PORT || '8000';
-        const server  = require('http').createServer(app).listen(port);
-        const wsPath = process.env.WEB_SOCKET_PATH || '/sessions';
-        const socketServerOptions: FabricSocketServerOptions = {
-            path: wsPath,
-            server: server,
-            logLevel,
-        };
-        const socketServer = new FabricSocketServer(socketServerOptions);
-
-        const ledgerConfig = new LedgerConfig(logLevel,socketServer);
+        const wsSessionBackend = new WsIdentityClient({
+            apiVersion: 'v1',
+            endpoint: process.env.WS_IDENTITY_ENDPOINT,
+            pathPrefix: '/session',
+        });
+        const ledgerConfig = new LedgerConfig(logLevel);
 
         // vault token based authentication
         const auth = async (req: Request, res: Response, next) => {
@@ -41,7 +34,11 @@ export class LedgerIntegrationV2 {
             const bearerHeader = req.header('Authorization');
             const sessionId= req.header('sessionId');
             const signature= req.header('signature');
-            if (!bearerHeader && (!signature && !sessionId)) {
+            // username needed to extract external certstoreKeychain
+            // TODO customized cert delivery, 
+            // e.g/, client provides certi without remote cert store
+            const username= req.header('username');
+            if (!bearerHeader && (!signature && !sessionId && !username)) {
                 return res.sendStatus(403);
             } 
             try {
@@ -53,9 +50,7 @@ export class LedgerIntegrationV2 {
                         (req as any).username = details.username;
                         break;
                     case FabricSigningCredentialType.WsX509 :
-                        (req as any).username = 
-                            req.header('username') || 
-                            (await socketServer.getClient({sessionId,signature}))?.keyName;
+                        (req as any).username = username;
                         (req as any).sessionId = sessionId;
                         (req as any).signature = signature;
                         break;
@@ -71,7 +66,7 @@ export class LedgerIntegrationV2 {
             const identityRouter = new IdentityRouter({
                 logLevel: logLevel,
                 backend: vaultBackend,
-                socketServer: socketServer,
+                wsSessionBackend: wsSessionBackend,
             });
             app.use('/api/v2/im', identityRouter.router);
         }

@@ -3,7 +3,6 @@ import {
     FabricSigningCredentialType,
     IVaultConfig,
     IWebSocketConfig,
-    FabricSocketServer,
     PluginLedgerConnectorFabric,
     IPluginLedgerConnectorFabricOptions,
 } from '@brioux/cactus-plugin-ledger-connector-fabric'
@@ -23,7 +22,7 @@ export class LedgerConfig {
     certStoreKeychain: IPluginKeychain;
     pluginRegistry: PluginRegistry;
     awss3: AWSS3;
-    constructor(logLevel: LogLevelDesc, server: FabricSocketServer) {
+    constructor(logLevel: LogLevelDesc) {
         const fnTag = 'LedgerConfig#constructor';
         const log = LoggerProvider.getOrCreate({ label: 'LedgerConfig', level: logLevel });
         this.awss3 = new AWSS3();
@@ -88,7 +87,12 @@ export class LedgerConfig {
                     }
 
                     if (iSupport.includes('web-socket')) {
-                        webSocketConfig = {server: server};
+                        const endpoint = process.env.WS_IDENTITY_ENDPOINT;
+                        const pathPrefix = process.env.WS_IDENTITY_PATH_PREFIX;
+                        webSocketConfig = {
+                            endpoint: endpoint,
+                            pathPrefix: pathPrefix,
+                        };
                         identitySupport.push(FabricSigningCredentialType.WsX509);
                     }
                     log.info(`${fnTag} FABRIC IDENTITY SUPPORT = ${identitySupport}`);

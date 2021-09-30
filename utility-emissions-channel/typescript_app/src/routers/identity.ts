@@ -3,12 +3,12 @@ import { Logger, LoggerProvider, LogLevelDesc } from '@hyperledger/cactus-common
 import { Router, Request, Response } from 'express';
 import { header, query, validationResult, body } from 'express-validator';
 import { randomBytes } from 'crypto';
-import { FabricSocketServer } from '@brioux/cactus-plugin-ledger-connector-fabric'
+import { WsIdentityClient } from 'ws-identity-client';
 
 export interface IIdentityRouterOptions {
     logLevel: LogLevelDesc;
     backend: VaultIdentityBackend;
-    socketServer: FabricSocketServer;
+    wsSessionBackend: WsIdentityClient;
 }
 
 export class IdentityRouter {
@@ -106,7 +106,7 @@ export class IdentityRouter {
 
         this.router.post(
             '/web-socket-session-id',
-            [body('pubKeyHex').isString()], 
+            [body('pubKeyHex').isString().notEmpty()], 
             this.newSessionId.bind(this)
         )
     }
@@ -123,17 +123,15 @@ export class IdentityRouter {
             });
         }
         try{
-            sessionId = this.opts.socketServer.newSessionId(req.body.pubKeyHex);
+            sessionId = await this.opts.wsSessionBackend.write("new",{
+                    pubKeyHex: req.body.pubKeyHex},{});
         } catch (error){
             this.log.error(`${fnTag} failed to get a new web-socket session-id`);
             return res.status(209).json({
                 msg: (error as Error).message,
             });            
         }
-        return res.status(201).json({
-            sessionId,
-            address: this.opts.socketServer.hostAddress
-        });
+        return res.status(201).json({sessionId});
     }
 
     private async newIdentity(req: Request, res: Response) {

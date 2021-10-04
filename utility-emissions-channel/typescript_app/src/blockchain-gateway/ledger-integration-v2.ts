@@ -14,18 +14,12 @@ import { CarbonAccountingRouterV2 } from '../routers/carbonAccounting-v2';
 import { 
     FabricSigningCredentialType,
 } from '@brioux/cactus-plugin-ledger-connector-fabric'
-import { WsIdentityClient } from 'ws-identity-client';
 export class LedgerIntegrationV2 {
     readonly className = 'LedgerIntegrationV2';
     constructor(readonly app: Express) {
 
         const logLevel = 'DEBUG';
         const vaultBackend = new VaultIdentityBackend(logLevel);
-        const wsSessionBackend = new WsIdentityClient({
-            apiVersion: 'v1',
-            endpoint: process.env.WS_IDENTITY_ENDPOINT,
-            pathPrefix: '/session',
-        });
         const ledgerConfig = new LedgerConfig(logLevel);
 
         // vault token based authentication
@@ -34,10 +28,11 @@ export class LedgerIntegrationV2 {
             const bearerHeader = req.header('Authorization');
             const sessionId= req.header('sessionId');
             const signature= req.header('signature');
+            const username= req.header('username');
             // username needed to extract external certstoreKeychain
             // TODO customized cert delivery, 
             // e.g/, client provides certi without remote cert store
-            const username= req.header('username');
+            
             if (!bearerHeader && (!signature && !sessionId && !username)) {
                 return res.sendStatus(403);
             } 
@@ -65,8 +60,7 @@ export class LedgerIntegrationV2 {
             // start identity manager
             const identityRouter = new IdentityRouter({
                 logLevel: logLevel,
-                backend: vaultBackend,
-                wsSessionBackend: wsSessionBackend,
+                backend: vaultBackend
             });
             app.use('/api/v2/im', identityRouter.router);
         }

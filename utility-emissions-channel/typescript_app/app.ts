@@ -6,7 +6,8 @@ import swaggerDocsV2 from './swagger.v2-ws.json';
 // import swaggerDocs from './swagger.json';
 import multer from 'multer';
 import { LedgerIntegrationV2 } from './src/blockchain-gateway/ledger-integration-v2';
-
+import { WsIdentityRouter } from 'ws-identity'
+import path from 'path'
 const env = process.env.NODE_ENV;
 if (env) {
     const cfgOut = config({ path: `.env.${env}` });
@@ -43,14 +44,29 @@ const credentials = {
 const server = require('http').createServer(app);
 
 new LedgerIntegrationV2(app);
+const wsMount = '/sessions'
 
-app.listen(PORT, () => {
+new WsIdentityRouter({
+    app,
+    server,
+    wsMount ,
+    logLevel: 'debug'
+});
+
+
+server.listen(PORT, () => {
     console.log(`++++++++++++++++ Hyperledger CA2 SIG /// Carbon Accouncting API ++++++++++++++++`);
     console.log(`++ REST API PORT : ${PORT}`);
     console.log(`++ ACCESS SWAGGER : http://localhost:${PORT}/api-docs/`);
     console.log(`++ ACCESS SWAGGER V2 : http://localhost:${PORT}/v2-api-docs/`);
+    console.log(`++ WS-IDENTITY SERVER has been attached: http://localhost:/${PORT}`);
     console.log(`++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++`);
 });
+
+
+// setup the identity router within the typescript app
+
+
 
 
 

@@ -30,8 +30,8 @@ import { Balance, RolesInfo, Token, TOKEN_FIELDS, TOKEN_TYPES, Tracker } from ".
 import { Web3Provider } from "@ethersproject/providers";
 
 type IssuedTrackersProps = {
-  provider?: Web3Provider, 
-  signedInAddress: string, 
+  provider?: Web3Provider,
+  signedInAddress: string,
   displayAddress: string,
   roles: RolesInfo
 }
@@ -163,7 +163,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
         newMyBalances.push(token);
       }
     } catch (error) {
-      
+
     }
 
     setMyBalances(newMyBalances);
@@ -179,7 +179,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
     let newMyIssuedTrackers = [];
     let newTrackersWithMyProducts =[];
     let _issuedCount = 0;
-    
+
     try {
       // First, fetch number of unique tokens
       if(!provider) return;
@@ -189,6 +189,8 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
       let trackerDetails;
       for (let i = 1; i <= numOfUniqueTrackers; i++) {
         // Fetch tracker details
+
+        // TO CHANGE
         let result = await getTrackerDetails(provider, i, signedInAddress);
         let trackerDetails =result[0][0];
         console.log('--- trackerDetails', result);
@@ -212,7 +214,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
 
         let divDecimals = result[4].toNumber();
         let carbonIntensity = result[3]/divDecimals;
-        
+
         let productNames = result[5][0].map(String);
         let conversions = result[5][1].map((e:number)=>e/divDecimals);
         let units = result[5][2].map(String);
@@ -231,10 +233,10 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
           myProductBalances[i] = (myProductBalances[i] * conversions[i] ).toFixed(0);
           available[i] = (available[i] * conversions[i] ).toFixed(0);
 
-          myTotalProductBalance+=myProductBalances[i]; 
-          
+          myTotalProductBalance+=myProductBalances[i];
+
           emissionFactors[i] = (carbonIntensity / conversions[i]).toFixed(3);
-        } 
+        }
         if(myTotalProductBalance>0){
           totalEmissions = myProductsTotalEmissions.toFixed(0);
           tokenAmounts = myTokenAmounts;
@@ -284,7 +286,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
           newMyIssuedTrackers.push({...tracker});
           //NFT.isMyIssuedTrackers = true;
         }
-        
+
       }
 
     } catch (error) {
@@ -340,8 +342,8 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
       let name = tracker.products?.names[productId];
       let units = tracker.products?.units[productId];
       return(
-      <div key={tracker.trackerId+"ProductInfo"+productId}> 
-        <div key={tracker.trackerId+name+productId+"Amount"}> 
+      <div key={tracker.trackerId+"ProductInfo"+productId}>
+        <div key={tracker.trackerId+name+productId+"Amount"}>
           {name+": "+amount+" "+units};
         </div>
         <div key={tracker.trackerId+name+productId+"intensity"}>
@@ -361,7 +363,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
           <th>ID</th>
           <th>Total Emissions</th>
           <th>Products: units </th>
-          <th>Description</th>                  
+          <th>Description</th>
         </tr>
       </thead>
       <tbody>
@@ -377,25 +379,25 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
                 <div key={tracker.trackerId+"ProductInfo"+i}>
                   {displayProduct(tracker,i,myProducts)}
                   {(isDealer && tracker.auditor=="0x0000000000000000000000000000000000000000") ?
-                    <Button 
+                    <Button
                       className="mb-3"
-                      variant="outline-dark" 
+                      variant="outline-dark"
                       href={"/addProduct/"+tracker.trackerId} >
                       Add product
                     </Button>
                     : null
-                  }  
+                  }
                   {
-                    /* TO-DO the following conditional should be set to owner of the C-NFT 
-                     since it can be transferred from the trackee to a distributor 
+                    /* TO-DO the following conditional should be set to owner of the C-NFT
+                     since it can be transferred from the trackee to a distributor
                      using the ERC721Upgradeable transfer function*/
-                  }                  
+                  }
                   {signedInAddress==tracker.trackee ?
-                    <Button 
+                    <Button
                       className="mb-3"
-                      variant="outline-dark" 
-                      href={"/productTransfer/"+tracker.trackerId} 
-                    >Transfer</Button> 
+                      variant="outline-dark"
+                      href={"/productTransfer/"+tracker.trackerId}
+                    >Transfer</Button>
                     : null
                   }
                 </div>
@@ -403,20 +405,20 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
               <td>
                 <div key={"trackerId"+tracker.trackerId+"Description"}>{tracker.description}</div>
                 {(tracker.auditor=="0x0000000000000000000000000000000000000000") ?
-                  (<><Button 
+                  (<><Button
                     className="mb-3"
-                    variant="outline-dark" 
+                    variant="outline-dark"
                     href={"/track/"+tracker.trackerId} >
                     Add token</Button>
-                    {provider ? 
-                      <Button 
+                    {provider ?
+                      <Button
                         className="mb-3"
-                        variant="outline-dark" 
+                        variant="outline-dark"
                         onClick={async() => await verifyTracker(provider, tracker.trackerId)}
-                        //href={"/verifyTracker/"+tracker.trackerId} 
+                        //href={"/verifyTracker/"+tracker.trackerId}
                       >Verify</Button> : null}
                   </>)
-                : null } 
+                : null }
               </td>
             </tr>
           ))}
@@ -443,12 +445,12 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
       <div>
         {/* Only display issued tokens if owner or dealer */}
         {
-          <Button 
+          <Button
             className="mb-3"
-            variant="outline-dark" 
+            variant="outline-dark"
             href="/track/0">
             Issue
-          </Button> 
+          </Button>
         }
         {
           //((!displayAddress && isIndustry) || (displayAddress && displayAddressIsIndustry)) &&
@@ -456,15 +458,15 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
             {isIndustry && myTrackers.length>0 ? <>
               <h4>My Trackers</h4>
               {renderTrackersTable(myTrackers,fetchingMyTrackers,provider)}</>
-              : null 
+              : null
             }
-            {isDealer ? 
+            {isDealer ?
               <><h4>All Trackers {(displayAddress ? 'They' : 'You')}'{'ve'} Issued</h4>
               {renderTrackersTable(myIssuedTrackers,fetchingMyIssuedTrackers,provider)}</>
-              :<><h4>Trackers with my product balances</h4> 
+              :<><h4>Trackers with my product balances</h4>
               {renderTrackersTable(trackersWithMyProducts,fetchingTrackersWithMyProducts,provider,true)}</>
             }
-            {myIssuedTrackers.length !== 0 ? <Paginator 
+            {myIssuedTrackers.length !== 0 ? <Paginator
               count={count}
               page={page}
               pageSize={pageSize}

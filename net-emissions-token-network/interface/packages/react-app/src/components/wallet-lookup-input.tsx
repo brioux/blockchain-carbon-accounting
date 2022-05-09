@@ -109,9 +109,8 @@ const WalletLookupInput:ForwardRefRenderFunction<WalletLookupInputHandle, Wallet
     style={style}
     classes={classes}
     renderOption={(props, option) => {
-      //console.log(option.address.slice(option.address.length-4))
       const name = (typeof option === 'string') ? null : option.name
-      const addr = (typeof option === 'string') ? option : "0x.." + option.address.slice(option.address.length-6)
+      const addr = (typeof option === 'string') ? option : "0x.." + option.address?.slice(option.address.length-6)
 
 
       return (

@@ -9,6 +9,7 @@ import {
   MouseEvent,
   ChangeEvent
 } from "react";
+import { InputGroup } from "react-bootstrap";
 import Spinner from "react-bootstrap/Spinner";
 import Button from 'react-bootstrap/Button';
 import Table from "react-bootstrap/Table";
@@ -17,7 +18,6 @@ import {
   getNumOfUniqueTrackers,
   getRoles,
   getTrackerDetails,
-  getTrackerIds,
   getCarbonIntensity,
   getTokenDetails,
   verifyTracker,
@@ -28,6 +28,7 @@ import Paginator from "../components/paginate";
 import QueryBuilder from "../components/query-builder";
 import { Balance, RolesInfo, Token, TOKEN_FIELDS, TOKEN_TYPES, Tracker } from "../components/static-data";
 import { Web3Provider } from "@ethersproject/providers";
+import WalletLookupInput from "../components/wallet-lookup-input";
 
 type IssuedTrackersProps = {
   provider?: Web3Provider,
@@ -50,14 +51,14 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
 
   // Balances of my tokens and tokens I've issued
   const [myBalances, setMyBalances] = useState<Balance[]>([]);
-  const [myIssuedTrackers, setMyIssuedTrackers] = useState<Tracker[]>([]);
   const [myTrackers, setMyTrackers] = useState<Tracker[]>([]);
+  const [myIssuedTrackers, setMyIssuedTrackers] = useState<Tracker[]>([]);
   const [trackersWithMyProducts, setTrackersWithMyProducts] = useState<Tracker[]>([]);
 
+  const [fetchingTrackers, setFetchingTrackers] = useState(false);
 
-  const [fetchingMyIssuedTrackers, setFetchingMyIssuedTrackers] = useState(false);
-  const [fetchingMyTrackers, setFetchingMyTrackers] = useState(false);
-  const [fetchingTrackersWithMyProducts, setFetchingTrackersWithMyProducts] = useState(false);
+  const [address, setAddress] = useState("");
+  const [initializedAddressInput, setInitializedAddressInput] = useState(false);
 
   const [error, setError] = useState("");
 
@@ -112,10 +113,8 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
     let localStorage = window.localStorage;
     localStorage.setItem('token_balances', '');
 
-    setFetchingMyIssuedTrackers(true);
-    setFetchingMyTrackers(true);
-    setFetchingTrackersWithMyProducts(true);
-    //await fetchTrackers(page, pageSize, query);
+    setFetchingTrackers(true);
+    await fetchTrackers(page, pageSize, query);
     //await fetchBalances(balancePage, balancePageSize, balanceQuery);
   }
 
@@ -170,7 +169,7 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
     setBalancePage(_balancePage);
     setBalancePageSize(_balancePageSize);
     setBalanceQuery(_balanceQuery);
-    setFetchingMyIssuedTrackers(false);
+    setFetchingTrackers(false);
   }, [signedInAddress]);*/
 
   const fetchTrackers = useCallback(async (_page: number, _pageSize: number, _query: string[]) => {
@@ -189,115 +188,27 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
       let trackerDetails;
       for (let i = 1; i <= numOfUniqueTrackers; i++) {
         // Fetch tracker details
-
-        // TO CHANGE
-        let result = await getTrackerDetails(provider, i, signedInAddress);
-        let trackerDetails =result[0][0];
-        console.log('--- trackerDetails', result);
-
-        // Format unix times to Date objects
-        //let fromDate = decodeDate(trackerDetails.fromDate).toNumber();
-        //let thruDate = decodeDate(trackerDetails?.thruDate).toNumber();
-
-        let trackerIds = await getTrackerIds(provider, i);
-        //console.log('--- trackerIds', trackerIds);
-        let totalEmissions = (result[0][1]).toNumber();
-        let totalProductAmounts = trackerDetails.totalProductAmounts.toNumber();
-
-        let productIds = result[1][0].map(Number);
-        let productAmounts = result[1][1].map(Number);
-        let available = result[1][2].map(Number);
-        let myProductBalances = result[6].map(Number);
-
-        let tokenIds =result[2][0].map(Number)
-        let tokenAmounts = result[2][1].map(String);
-
-        let divDecimals = result[4].toNumber();
-        let carbonIntensity = result[3]/divDecimals;
-
-        let productNames = result[5][0].map(String);
-        let conversions = result[5][1].map((e:number)=>e/divDecimals);
-        let units = result[5][2].map(String);
-
-        let emissionFactors = [].map(String);
-
-        let myTotalProductBalance = 0;
-        let myProductsTotalEmissions = 0;
-        let myTokenAmounts = []
-        for (let i = 0; i < productAmounts.length; i++){
-          myTokenAmounts = tokenAmounts.map((e:number) => (
-            (e*myProductBalances[i]/totalProductAmounts).toFixed(0)));
-          myProductsTotalEmissions += myProductBalances[i]*carbonIntensity ;
-
-          productAmounts[i] = (productAmounts[i] * conversions[i] ).toFixed(0);
-          myProductBalances[i] = (myProductBalances[i] * conversions[i] ).toFixed(0);
-          available[i] = (available[i] * conversions[i] ).toFixed(0);
-
-          myTotalProductBalance+=myProductBalances[i];
-
-          emissionFactors[i] = (carbonIntensity / conversions[i]).toFixed(3);
+        let tracker:Tracker|string
+          = await getTrackerDetails(provider, i, signedInAddress);
+        if(typeof tracker === "object"){
+          if (tracker?.trackee?.toLowerCase() === signedInAddress.toLowerCase()) {
+            newMyTrackers.push({...tracker});
+          }
+          if (tracker?.myProductsTotalEmissions>0) {
+            newTrackersWithMyProducts.push({...tracker});
+          }else{
+            newMyIssuedTrackers.push({...tracker});
+            //NFT.isMyIssuedTrackers = true;
+          }
         }
-        if(myTotalProductBalance>0){
-          totalEmissions = myProductsTotalEmissions.toFixed(0);
-          tokenAmounts = myTokenAmounts;
-        }
-
-        let tokenDetails = [];
-
-        for (let i = 0; i < tokenIds.length; i++) {
-          tokenDetails[i]= await getTokenDetails(provider,tokenIds[i]);
-        }
-
-        let tracker: Tracker = {
-          trackerId: i,
-          auditor: trackerDetails.auditor,
-          trackee: trackerDetails.trackee,
-          fromDate: Number(trackerDetails.fromDate),
-          thruDate: Number(trackerDetails.thruDate),
-          metadata: trackerDetails.metadata,
-          description: trackerDetails.description,
-          totalEmissions: totalEmissions,
-          totalProductAmounts: totalProductAmounts,
-          //totalOffset: totalOffset,
-          carbonIntensity,
-          products: {
-            ids: productIds,
-            myBalances: myProductBalances,
-            names: productNames,
-            amounts: productAmounts,
-            available,
-            emissionFactors,
-            //conversion,
-            units,
-          },
-          tokens: {
-            amounts: tokenAmounts,
-            details: tokenDetails
-          },
-        };
-
-        if (tracker.trackee.toLowerCase() === signedInAddress.toLowerCase()) {
-          newMyTrackers.push({...tracker});
-        }
-        //console.log(myProductBalances)
-        if (isIndustry && myTotalProductBalance>0) {
-          newTrackersWithMyProducts.push({...tracker});
-        }else{
-          newMyIssuedTrackers.push({...tracker});
-          //NFT.isMyIssuedTrackers = true;
-        }
-
       }
-
     } catch (error) {
       console.log(error);
       setError("Could not connect to carbon tracker contract on the selected network. Check your wallet provider settings.");
     }
 
     // setMyBalances(newMyBalances);
-    setFetchingMyIssuedTrackers(false);
-    setFetchingMyTrackers(false);
-    setFetchingTrackersWithMyProducts(false);
+    setFetchingTrackers(false);
     setMyTrackers(newMyTrackers);
     setMyIssuedTrackers(newMyIssuedTrackers);
     setTrackersWithMyProducts(newTrackersWithMyProducts);
@@ -306,21 +217,16 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
     setPage(_page);
     setPageSize(_pageSize);
     setQuery(_query);
-  }, [provider, signedInAddress]);
+  }, [provider, signedInAddress, roles]);
 
   // If address and provider detected then fetch balances
   useEffect(() => {
     const init = async () => {
       if (provider && signedInAddress) {
-        if (
-          (myIssuedTrackers !== [] && !fetchingMyIssuedTrackers)
-          || (myTrackers !== [] && !fetchingMyTrackers)
-          || (trackersWithMyProducts !== [] && !fetchingTrackersWithMyProducts)
-          )
-          {
-          setFetchingMyIssuedTrackers(true);
-          setFetchingMyTrackers(true);
-          setFetchingTrackersWithMyProducts(true);
+        if ((myTrackers !== []
+          || myIssuedTrackers !== [] || trackersWithMyProducts !== []
+          ) && !fetchingTrackers){
+          setFetchingTrackers(true);
           // TO-DO imlplement postgres backend for storing and tracking traker data
           await fetchTrackers(page, pageSize, query);
           //await fetchBalances(balancePage, balancePageSize, balanceQuery);
@@ -344,7 +250,10 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
       return(
       <div key={tracker.trackerId+"ProductInfo"+productId}>
         <div key={tracker.trackerId+name+productId+"Amount"}>
-          {name+": "+amount+" "+units};
+          {
+            name+": "+tracker.products?.available[productId]+" "+units
+            //name+": "+amount+" ("+tracker.products?.available[productId]+") "+units
+          }
         </div>
         <div key={tracker.trackerId+name+productId+"intensity"}>
           {tracker.products?.emissionFactors[productId]}
@@ -354,15 +263,22 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
     }
   }
 
+  const inputError = {
+    boxShadow: '0 0 0 0.2rem rgba(220,53,69,.5)',
+    borderColor: '#dc3545'
+  };
+
 
   function renderTrackersTable(trackers: Tracker[],fetching:boolean,
     provider?: Web3Provider,myProducts?:boolean){
+    if(trackers.length===0 || fetching){return}
+
     return (<><Table hover size="sm">
       <thead>
         <tr>
           <th>ID</th>
           <th>Total Emissions</th>
-          <th>Products: units </th>
+          <th>Products available </th>
           <th>Description</th>
         </tr>
       </thead>
@@ -375,36 +291,40 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
             >
               <td>{tracker.trackerId}</td>
               <td>{tracker.totalEmissions.toString()+" kgCO2e"}</td>
-              <td>{tracker.products?.names?.map((name,i) => (
+              <td>{tracker.products?.ids?.map((productId,i) => (
                 <div key={tracker.trackerId+"ProductInfo"+i}>
                   {displayProduct(tracker,i,myProducts)}
-                  {(isDealer && tracker.auditor=="0x0000000000000000000000000000000000000000") ?
-                    <Button
-                      className="mb-3"
-                      variant="outline-dark"
-                      href={"/addProduct/"+tracker.trackerId} >
-                      Add product
-                    </Button>
-                    : null
-                  }
                   {
                     /* TO-DO the following conditional should be set to owner of the C-NFT
                      since it can be transferred from the trackee to a distributor
                      using the ERC721Upgradeable transfer function*/
                   }
-                  {signedInAddress==tracker.trackee ?
+
+                  { (signedInAddress.toLowerCase()===tracker.trackee.toLowerCase()
+                    && tracker?.auditor.toLowerCase()
+                      !=="0x0000000000000000000000000000000000000000"
+                    && tracker.products?.available[i]>0) ?
                     <Button
                       className="mb-3"
                       variant="outline-dark"
-                      href={"/productTransfer/"+tracker.trackerId}
+                      href={"/transferProduct/"+tracker.trackerId+"/"+productId}
                     >Transfer</Button>
                     : null
                   }
                 </div>
-              ))}</td>
+              ))}
+              {(isDealer && tracker.auditor.toLowerCase()==="0x0000000000000000000000000000000000000000") ?
+                <Button
+                  className="mb-3"
+                  variant="outline-dark"
+                  href={"/addProduct/"+tracker.trackerId}
+                >Add product
+                </Button>
+                : null
+              }</td>
               <td>
                 <div key={"trackerId"+tracker.trackerId+"Description"}>{tracker.description}</div>
-                {(tracker.auditor=="0x0000000000000000000000000000000000000000") ?
+                {(isDealer && tracker.auditor=="0x0000000000000000000000000000000000000000") ?
                   (<><Button
                     className="mb-3"
                     variant="outline-dark"
@@ -457,14 +377,14 @@ const IssuedTrackers: ForwardRefRenderFunction<IssuedTokensHandle, IssuedTracker
           <div className="mt-4">
             {isIndustry && myTrackers.length>0 ? <>
               <h4>My Trackers</h4>
-              {renderTrackersTable(myTrackers,fetchingMyTrackers,provider)}</>
+              {renderTrackersTable(myTrackers,fetchingTrackers,provider)}</>
               : null
             }
             {isDealer ?
               <><h4>All Trackers {(displayAddress ? 'They' : 'You')}'{'ve'} Issued</h4>
-              {renderTrackersTable(myIssuedTrackers,fetchingMyIssuedTrackers,provider)}</>
+              {renderTrackersTable(myIssuedTrackers,fetchingTrackers,provider)}</>
               :<><h4>Trackers with my product balances</h4>
-              {renderTrackersTable(trackersWithMyProducts,fetchingTrackersWithMyProducts,provider,true)}</>
+              {renderTrackersTable(trackersWithMyProducts,fetchingTrackers,provider,true)}</>
             }
             {myIssuedTrackers.length !== 0 ? <Paginator
               count={count}

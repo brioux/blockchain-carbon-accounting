@@ -12,7 +12,7 @@ import { encodeParameters, getAdmin, issue, track, issueAndTrack,getTrackerDetai
 import CreateProposalModal from "../components/create-proposal-modal";
 import SubmissionModal from "../components/submission-modal";
 import { Web3Provider } from "@ethersproject/providers";
-import { RolesInfo, TOKEN_TYPES } from "../components/static-data";
+import { RolesInfo, TOKEN_TYPES, Tracker } from "../components/static-data";
 import WalletLookupInput from "../components/wallet-lookup-input";
 import { InputGroup } from "react-bootstrap";
 
@@ -26,7 +26,7 @@ type IssueFormProps = {
   signedInAddress: string, 
   roles: RolesInfo,
   limitedMode: boolean,
-  trackerId?: any,
+  trackerId?: number,
 }
  
 const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limitedMode, trackerId }) => {
@@ -41,10 +41,9 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
   const [address, setAddress] = useState("");
   const [issuedFrom, setIssuedFrom] = useState('');
   
+  let andTrack = (typeof trackerId !== 'undefined');
   //const [trackerId, setTrackerId] = useState("");
   const [tracker, setTracker] = useState<any>(null);
-  const [productName, setProductName] = useState("");
-  const [productAmount, setProductAmount] = useState("");
   const [tokenTypeId, setTokenTypeId] = useState(1);
   const [quantity, setQuantity] = useState("");
   const [fromDate, setFromDate] = useState<Date|null>(null);
@@ -73,9 +72,6 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
   const [initializedProductAmountInput, setinitializedProductAmountInput] = useState(false);
 
   //const onTrackerIdChange = useCallback((event: ChangeEvent<HTMLInputElement>) => { setTrackerId(event.target.value); }, []);
-  const onTrackerChange = useCallback((event: ChangeEvent<HTMLInputElement>) => { setTracker(event.target.value); }, []);
-  const onProductNameChange  = useCallback((event: ChangeEvent<HTMLInputElement>) => { setProductName(event.target.value); }, []);
-  const onProductAmountChange  = useCallback((event: ChangeEvent<HTMLInputElement>) => { setProductAmount(event.target.value); }, []);
   const onTokenTypeIdChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => { setTokenTypeId(parseInt(event.target.value)); }, []);
   const onQuantityChange = useCallback((event: ChangeEvent<HTMLInputElement>) => { setQuantity(event.target.value); }, []);
   const onDescriptionChange = useCallback((event: ChangeEvent<HTMLInputElement>) => { setDescription(event.target.value); }, []);
@@ -145,17 +141,17 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
 
   useEffect(() => {
     async function fetchTrackerDetails() {
-      if(!provider){
+      if(!provider || !andTrack){
         return;
       }
-      let result = (await getTrackerDetails(provider,trackerId,signedInAddress))[0][0];
-      if (trackerId) {
-        setTracker(result);
+      const result = 
+        await getTrackerDetails(provider,Number(trackerId),signedInAddress);
+      if (Number(trackerId)>0 && typeof result === 'object'  ) {
+        //setTrackerId(result.trackerId);
         setAddress(result.trackee)
       }
     }
     fetchTrackerDetails();
-    //console.log(tracker);
   }, [provider, trackerId]);
 
 
@@ -248,8 +244,8 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
     const _metadata = castMetadata(metadata);
     const _manifest = castManifest(manifest);
     let result;
-    if(trackerId!==null){
-      result = await issueAndTrack(provider, issuedFrom, address, trackerId, trackerDescription, tokenTypeId, quantity_formatted, fromDate, thruDate, _metadata, _manifest, description);
+    if(andTrack && typeof trackerId !== 'undefined'){
+      result = await issueAndTrack(provider, issuedFrom, address, Number(trackerId), trackerDescription, tokenTypeId, quantity_formatted, fromDate, thruDate, _metadata, _manifest, description);
     }else{
       result = await issue(provider, issuedFrom, address, tokenTypeId, quantity_formatted, fromDate, thruDate, _metadata, _manifest, description);
     }
@@ -289,10 +285,10 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
         Issue tokens
       </h2>
       <p>
-        {(trackerId!==null) ? "to emissions tracker contract: "+ addresses.carbonTracker.address : null } 
+        {(andTrack) ? "for emissions tracker contract: "+ addresses.carbonTracker.address : null } 
       </p>
 
-      {(trackerId!==null) ? 
+      {(andTrack) ? 
         <Form.Group className="mb-3" controlId="trackerIdInput">
           <Form.Label>TrackerId</Form.Label>
           <Form.Control
@@ -313,8 +309,7 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
               onChange={onTrackerDescriptionChange} />*/}
         </Form.Group>
       : null}
-      <p>Issue tokens {(trackerId!==null) ? "to tracker: " : null }  (Renewable Energy Certificate, Carbon Emissions Offset, Audited Emissions, Carbon Tracker) to registered consumers.</p>
-
+      <p>Issue tokens (Renewable Energy Certificate, Carbon Emissions Offset, Audited Emissions, Carbon Tracker) to registered {(andTrack) ? "industry" : "consumers"}.</p>
       <Form.Group className="mb-3">
           <Form.Label>
             Issue From Address
@@ -335,32 +330,26 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
         ?
         <Form.Group className="mb-3">
           <Form.Label>
-            {(trackerId==null) ? "Issue To Address" : "Issue Tracker To Address" }
+            {(andTrack) ? "Issue To Address" : "Issue Tracker To Address" }
           </Form.Label>
-          {trackerId==0 ?
+          {(!andTrack || trackerId==0) ?
             <InputGroup>
               <WalletLookupInput 
                 onChange={(v: string) => { setAddress(v) }} 
                 onWalletChange={(w)=>{
                   setAddress(w ? w.address! : '');
                 }} 
-                
                 onBlur={() => setInitializedAddressInput(true)}
                 style={(address || !initializedAddressInput) ? {} : inputError}
                 />
-
             </InputGroup>
           :
             <Form.Control
               type="input"
               value={address}
               disabled
-              onChange={onTrackerChange}
-              onBlur={() => setInitializedTrackerIdInput(true)}
-              style={(trackerId!==null || !initializedTrackerIdInput) ? {} : inputError}
             />            
           }
-
 
           <Form.Text className="text-muted">
             Must be a registered consumer or industry.
@@ -388,7 +377,7 @@ const IssueForm: FC<IssueFormProps> = ({ provider, roles, signedInAddress, limit
           <option value={0}>{}</option>
           {(roles.isAdmin || roles.isRecDealer) ? <option value={1}>{TOKEN_TYPES[0]}</option> : null}
           {(roles.isAdmin || roles.isCeoDealer) ? <option value={2}>{TOKEN_TYPES[1]}</option> : null}
-          {(roles.isAdmin || roles.isAeDealer) && trackerId==null ? <option value={3}>{TOKEN_TYPES[2]}</option> : null}
+          {(roles.isAdmin || roles.isAeDealer) && !andTrack ? <option value={3}>{TOKEN_TYPES[2]}</option> : null}
           {(roles.isAdmin || roles.isAeDealer) ? <option value={4}>{TOKEN_TYPES[3]}</option> : null}
         </Form.Select>
       </Form.Group>

@@ -39,7 +39,7 @@ const ProductForm: FC<ProductFormProps> = ({ provider, roles, signedInAddress, l
 
   // Form inputs
   const [address, setAddress] = useState("");
-  const [issuedFrom, setIssuedFrom] = useState('');
+  const [issuedFrom, setIssuedFrom] = useState("");
   
   //const [trackerId, setTrackerId] = useState("");
   const [productName, setProductName] = useState("");
@@ -88,9 +88,8 @@ const ProductForm: FC<ProductFormProps> = ({ provider, roles, signedInAddress, l
 
   async function submit() {
     if (!provider) return;
-    // we consider quantity has 3 decimals, multiply by 1000 before passing to the contract
     let productAmount_formatted = Math.round(Number(productAmount));
-    let productUnitAmount_formatted = Math.round(Number(productUnitAmount) * 1000);
+    let productUnitAmount_formatted = Math.round(Number(productUnitAmount));
 
     let result = await productUpdate(
       provider,trackerId,productAmount_formatted,
@@ -102,9 +101,6 @@ const ProductForm: FC<ProductFormProps> = ({ provider, roles, signedInAddress, l
     boxShadow: '0 0 0 0.2rem rgba(220,53,69,.5)',
     borderColor: '#dc3545'
   };
-
-  // consumer do not have access to this page
-  if (!roles.isAdmin && !roles.hasDealerRole) return <p>You do not have the required role to Issue tokens.</p>
 
   return roles.hasAnyRole ? (
     <>

@@ -61,7 +61,6 @@ const TrackerInfoModal:FC<TrackerInfoModalProps> = ({provider,show,tracker,onHid
   })
 
    function getWalletRole (trackee : any){
-     //console.log(data[0]?.roles)
       return data[0]
    }
 
